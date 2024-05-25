@@ -1,0 +1,7 @@
+build/
+dist/
+*.pyc
+
+## NOTE: These are ignored during development/testing with my exe creator
+_show_console_output.py
+requirements.txt

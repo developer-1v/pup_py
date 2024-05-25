@@ -13,7 +13,6 @@
 
     '''
 import subprocess, os, time, glob, tempfile, pkg_resources, site, difflib
-from print_tricks import pt, C
 
 function_steps_counter = [0]
 
