@@ -81,15 +81,30 @@ class PipUniversalProjects:
         self.project_dir = project_dir
         self.destination_dir = destination_dir
         self.main_folder = os.path.join(destination_dir, 'build_dist')
-        self.package_name = os.path.basename(project_dir) if package_name is None else package_name
-        self.dist_dir = os.path.join(self.main_folder, 'dist')
-        self.build_dir = os.path.join(self.main_folder, 'build')
+        
+        self.pypi_system_dir = os.path.join(self.main_folder, 'pypi_system')
+        
+        ## Subdirectories for wheel
+        self.dist_dir = os.path.join(self.pypi_system_dir, 'dist_pypi')
+        self.build_dir = os.path.join(self.pypi_system_dir, 'build_pypi')
         os.makedirs(self.dist_dir, exist_ok=True)
         os.makedirs(self.build_dir, exist_ok=True)
+        
+        args = sys.argv
+        self.package_name = os.path.basename(project_dir) if package_name is None else package_name
         self.wheel_path = None
         self.steps_counter = 0
         
-        self.execute_full_workflow
+        ## TEMP: Creation of exe directories for organizational testing
+        self.exe_system_dir = os.path.join(self.main_folder, 'exe_system')
+        self.exe_dist_dir = os.path.join(self.exe_system_dir, 'dist_exe')
+        self.exe_build_dir = os.path.join(self.exe_system_dir, 'build_exe')
+        os.makedirs(self.exe_dist_dir, exist_ok=True)
+        os.makedirs(self.exe_build_dir, exist_ok=True)
+        
+        
+        ## EXECUTE! 
+        self.execute_full_workflow()
 
     def execute_full_workflow(self):
         self.setup_file_data()
