@@ -1,7 +1,7 @@
 '''
-NOTE: 
+NOTE: (delete?)
 This file is currently a template/ idea of what I want to do. It's untested. 
-
+- I think this functionality has been replaced by my setup_file_manager.py
 
 '''
 

@@ -15,74 +15,25 @@
     - Install the package from PyPI
 '''
 
-import subprocess, os, time, glob, tempfile, pkg_resources, site, difflib
-from print_tricks import pt, C
+import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
 
-import subprocess
-import os
-import shutil
-import sys
 from setuptools import setup
 from twine.commands.upload import upload as twine_upload
-import textwrap
+
+from print_tricks import pt
+from setup_file_manager import SetupFileManager
+
+sys.path.append(os.path.dirname(__file__))
 
 
-import os
-import textwrap
-import re
-
-import os
-
-class SetupFileManager:
-    def __init__(self, project_dir):
-        self.project_dir = project_dir
-        self.setup_file_data = self.get_setup_file_data()
-
-    def get_setup_file_data(self):
-        setup_py_path = os.path.join(self.project_dir, 'setup.py')
-        main_py_path = os.path.join(self.project_dir, 'main.py')
-        template_path = os.path.join(os.path.dirname(__file__), 'setup_template.py')
-
-        # Try to read setup.py from the project directory
-        if os.path.exists(setup_py_path):
-            return self.parse_setup_file(setup_py_path)
-
-        # If setup.py is not found, try to read main.py
-        elif os.path.exists(main_py_path):
-            return self.parse_setup_file(main_py_path)
-
-        # If neither setup.py nor main.py are found, use the setup_template.py
-        else:
-            return self.parse_setup_file(template_path)
-
-    def parse_setup_file(self, file_path):
-        with open(file_path, 'r') as file:
-            content = file.read()
-
-        # Extract package name and version
-        package_name = self.extract_value(content, 'name=')
-        version = self.extract_value(content, 'version=')
-
-        return {'package_name': package_name, 'version': version}
-
-    def extract_value(self, content, key):
-        # Find the line containing the key and extract the value
-        start = content.find(key) + len(key)
-        if start != -1:
-            end = content.find(',', start)
-            if end == -1:
-                end = len(content)
-            value = content[start:end].strip().strip("'\"")
-            return value
-        return None
 
 class PipUniversalProjects:
-    def __init__(self, project_dir, destination_dir, package_name=None):
+    def __init__(self, project_dir, destination_dir=None, package_name=None):
         self.project_dir = project_dir
-        self.destination_dir = destination_dir
-        self.main_folder = os.path.join(destination_dir, 'build_dist')
-        
-        self.pypi_system_dir = os.path.join(self.main_folder, 'pypi_system')
+
+        self.destination_dir = project_dir if destination_dir is None else destination_dir
+        self.build_dist_dir = os.path.join(self.destination_dir, 'build_dist')
+        self.pypi_system_dir = os.path.join(self.build_dist_dir, 'pypi_system')
         
         ## Subdirectories for wheel
         self.dist_dir = os.path.join(self.pypi_system_dir, 'dist_pypi')
@@ -96,14 +47,15 @@ class PipUniversalProjects:
         self.steps_counter = 0
         
         ## TEMP: Creation of exe directories for organizational testing
-        self.exe_system_dir = os.path.join(self.main_folder, 'exe_system')
+        self.exe_system_dir = os.path.join(self.build_dist_dir, 'exe_system')
         self.exe_dist_dir = os.path.join(self.exe_system_dir, 'dist_exe')
         self.exe_build_dir = os.path.join(self.exe_system_dir, 'build_exe')
         os.makedirs(self.exe_dist_dir, exist_ok=True)
         os.makedirs(self.exe_build_dir, exist_ok=True)
         
+        self.setup_file_path = os.path.join(self.build_dist_dir, 'setup.py')
         
-        ## EXECUTE! 
+        ## EXECUTE!
         self.execute_full_workflow()
 
     def execute_full_workflow(self):
@@ -120,14 +72,16 @@ class PipUniversalProjects:
         self.steps_counter += 1
         pt.c(f'------------------------{self.steps_counter} Initializing Setup File Data------------------------')
         
-        self.setup_data = SetupFileManager(self.project_dir)
+        self.setup_data = SetupFileManager(self.project_dir, self.build_dist_dir)
 
     def build_wheel(self):
         self.steps_counter += 1
         pt.c(f'------------------------{self.steps_counter} Building Wheel------------------------')
         
-        setup_args = ['python', 'setup.py', 'bdist_wheel', '--dist-dir', self.dist_dir]
+        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.dist_dir]
+        pt()
         subprocess.run(setup_args, cwd=self.project_dir, check=True)
+        pt()
         wheels = [f for f in os.listdir(self.dist_dir) if f.endswith('.whl')]
         if wheels:
             return os.path.join(self.dist_dir, wheels[0])
@@ -167,13 +121,18 @@ class PipUniversalProjects:
         subprocess.run([sys.executable, '-m', 'pip', 'install', self.package_name], check=True)
 
 def main():
-    pup = PipUniversalProjects(
-        project_dir=r'C:\.PythonProjects\smak', 
-        destination_dir=r'C:\.PythonProjects\smak\build_dist',
-        )
+    ...
+    # pup = PipUniversalProjects(
+    #     project_dir=r'C:\.PythonProjects\smak', 
+    #     destination_dir=r'C:\.PythonProjects\smak\build_dist',
+    #     )
 
 
 
 
 if __name__ == '__main__':
-    main()
+    # main()
+    pup = PipUniversalProjects(
+    project_dir=r'C:\.PythonProjects\SavedTests\test_package_for_builds', 
+    # destination_dir=r'C:\.PythonProjects\test_output',
+    )

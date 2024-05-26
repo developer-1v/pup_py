@@ -10,17 +10,23 @@ NOTE:
         7 - Inactive
 
 '''
-import subprocess
+
+import sys, os
+sys.path.append(os.path.dirname(__file__))
+
 from setuptools import setup, find_packages
-from utilities import *
+from print_tricks import pt
+pt.easy_imports('pup_py')
+import setup_utilities
+
 
 
 
 def setup_package():
     """Setup the package with provided metadata and files."""
-    readme = read_file('README.md')
-    history = read_file('HISTORY.md')
-    requirements = generate_requirements()
+    readme = setup_utilities.read_file('README.md')
+    history = setup_utilities.read_file('HISTORY.md')
+    requirements = setup_utilities.generate_requirements()
 
     setup(
         author="Developer 1v",
@@ -43,7 +49,7 @@ def setup_package():
             ],
         },
         install_requires=requirements,
-        license="MIT license",
+        license="MIT License",
         long_description=readme + '\n\n' + history,
         include_package_data=True,
         keywords=['pup_py', 'pup', 'puppy', 'Pip Universal Projects', 'automated pip'],
