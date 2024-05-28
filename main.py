@@ -126,7 +126,7 @@ class PipUniversalProjects:
     def build_wheel(self):
         
         pt(self.setup_file_path, self.dist_dir)
-        pt.ex()
+        # pt.ex()
         setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.dist_dir]
         # pt()
         subprocess.run(setup_args, cwd=self.project_dir, check=True)
@@ -176,8 +176,6 @@ def main(project_dir, destination_dir=None):
         project_dir=project_dir, 
         destination_dir=destination_dir,
         )
-
-
 
 
 if __name__ == '__main__':

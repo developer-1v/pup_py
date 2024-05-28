@@ -18,18 +18,31 @@ class SetupFileManager:
         
         if os.path.exists(search_setup_path):
             data = self.parse_setup_file(search_setup_path)
-            return data, search_setup_path
+            if data['package_name'] is None or data['version'] is None:
+                print("Invalid setup.py found. Creating a new one from template.")
+                data = self.create_setup_from_template()
+                new_setup_path = search_setup_in_dist_dir
+                print("New setup.py created from template.")
+                return data, new_setup_path
+            else:
+                print("Valid setup.py found and parsed.")
+                pt(data, search_setup_path)
+                pt.ex()
+                return data, search_setup_path
         elif os.path.exists(search_setup_in_dist_dir):
             data = self.parse_setup_file(search_setup_in_dist_dir)
+            print("Setup.py found and parsed in build distribution directory.")
             return data, search_setup_in_dist_dir
         elif os.path.exists(search_main_py_path):
             data = self.parse_setup_file(search_main_py_path)
             # Create setup.py in the build distribution directory
             shutil.copy(search_main_py_path, search_setup_in_dist_dir)
+            print("Main.py found and used to create setup.py in the build distribution directory.")
             return data, search_setup_in_dist_dir
         else:
             data = self.create_setup_from_template()
             new_setup_path = search_setup_in_dist_dir  # Use the predefined path in the distribution directory
+            print("No setup.py or main.py found. Created new setup.py from template.")
             return data, new_setup_path
 
     def parse_setup_file(self, file_path):
@@ -37,6 +50,8 @@ class SetupFileManager:
             content = file.read()
         package_name = self.extract_value(content, 'name=')
         version = self.extract_value(content, 'version=')
+        if package_name == '' or version == '':
+            return {'package_name': None, 'version': None}
         return {'package_name': package_name, 'version': version}
 
     def extract_value(self, content, key):
