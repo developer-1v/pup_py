@@ -1,6 +1,5 @@
 from print_tricks import pt
-import os
-import shutil
+import os, re, shutil
 
 class SetupFileManager:
     def __init__(self, project_dir, build_dist_dir):
@@ -92,20 +91,17 @@ class SetupFileManager:
 
 
 if __name__ == '__main__':
-    project_dirs = [
-        "A_with_setup_py",
-        "B_with_main",
-        "C_with_nothing",
-        "D_with_requirements",
-        "E_with_existing_init_files",
-        ]
+
+    base_path = r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages'
+    
+    ## Get all of the test projects that start with a capital letter and underscore:
+    project_dirs = [name for name in os.listdir(base_path)
+                    if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
 
     for project_dir in project_dirs:    
         setup_file_manager = SetupFileManager(
-            project_dir=os.path.join(
-                r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages', project_dir),
-            build_dist_dir=os.path.join(
-                r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages', project_dir, 'build_dist')
+            project_dir=os.path.join(base_path, project_dir),
+            build_dist_dir=os.path.join(base_path, project_dir, 'build_dist')
         )
         setup_data = setup_file_manager.get_setup_file_data()
     pt(setup_data)

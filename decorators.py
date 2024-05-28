@@ -6,7 +6,7 @@ def step_decorator(func):
         step_name = func.__name__.replace('_', ' ').title()
         pt.c(f'\n------------------------{self.steps_counter} {step_name}------------------------')
         result = func(self, *args, **kwargs)
-        print(f'\n - Success ({step_name} - ')
+        print(f'\n - Success ({step_name}) - ')
         return result
     return wrapper
 

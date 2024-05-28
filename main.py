@@ -18,10 +18,15 @@
     - Install the package from PyPI or Test Pypi
     
     
+    TODO:
+    - replace setup.py with pyproject.toml and setuptools with "build" library. 
+    - if they have a setup.py in their project, then convert it to pyproject.toml
+    and place in our build_dist directory.
     
 '''
 
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
+import shutil
 
 from setuptools import setup
 from twine.commands.upload import upload as twine_upload
@@ -71,18 +76,19 @@ class PipUniversalProjects:
 
     def _execute_full_workflow(self):
         self.user_options()
+        self.check_gen_requirements()
         self.setup_file_data()
         self.verify_package_name()
         self.fix_and_optimize_package()
         self.build_wheel()
-        pt.ex()
         self.uninstall_package()
         self.install_wheel_locally()
+        pt.ex()
         self.test_installed_package()
         self.uninstall_local_wheel()
         self.upload_wheel_to_pypi()
         self.install_package_from_pypi()
-    
+
     def user_options(self):
         
         self.user_options = {
@@ -97,13 +103,46 @@ class PipUniversalProjects:
             'install_package_from_pypi': True,
             'excluded_folders': [''],
             }
+
+    def check_gen_requirements(self):
+        # Check if requirements.txt exists in either project_dir or build_dist_dir
+        requirements_path_project = os.path.join(self.project_dir, 'requirements.txt')
+        requirements_path_build = os.path.join(self.build_dist_dir, 'requirements.txt')
+
+        if os.path.exists(requirements_path_project):
+            shutil.copy(requirements_path_project, requirements_path_build)
+            pt.c('-- requirements.txt already exists, copying to build_dist_dir')
+            return
         
-    
+        if os.path.exists(requirements_path_build):
+            pt.c('-- requirements.txt already exists.')
+            return
+
+        try:
+            pt.c('-- Generating requirements.txt')
+            # Ensure the directory exists
+            if not os.path.exists(self.build_dist_dir):
+                os.makedirs(self.build_dist_dir)
+            pt(self.build_dist_dir)
+
+            ignore_dirs = 'dist,build,venv,pycache'  # No spaces after commas
+            subprocess.run([
+                    'pipreqs', 
+                    self.build_dist_dir, 
+                    '--force',  
+                    f'--ignore={ignore_dirs}',
+                    '--savepath', requirements_path_build
+                    ],
+                check=True)
+            pt.c('-- Finished Creating requirements.txt in build_dist_dir')
+        except Exception as e:
+                pt.e()
+                pt.ex(e)
+
     def setup_file_data(self):
         
         self.setup_file_manager = SetupFileManager(self.project_dir, self.build_dist_dir)
         self.setup_file_data, self.setup_file_path = self.setup_file_manager.get_setup_file_data()
-        
 
     def verify_package_name(self):
         
@@ -117,12 +156,10 @@ class PipUniversalProjects:
             if new_package_name:
                 self.package_name = new_package_name
                 self.verify_package_name()  ## Re-verify with new name
-        
 
     def fix_and_optimize_package(self):
         
         fix_and_optimize(self.project_dir, self.user_options)
-        
 
     def build_wheel(self):
         
@@ -138,30 +175,24 @@ class PipUniversalProjects:
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
-        
 
     def uninstall_package(self):
         
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
-        
 
     def install_wheel_locally(self):
         subprocess.run([sys.executable, '-m', 'pip', 'install', self.wheel_path, '--force-reinstall'], check=True)
-        
 
     def test_installed_package(self):
         print("Testing installed package...")
-        
 
     def uninstall_local_wheel(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
-        
 
     def upload_wheel_to_pypi(self, test_pypi=False):
         repository_url = 'https://test.pypi.org/legacy/' if test_pypi else 'https://upload.pypi.org/legacy/'
         pt.c(f'Uploading Package to {"Test PyPI" if test_pypi else "PyPI"}')
         twine_upload(['upload', '--repository-url', repository_url, self.wheel_path])
-        
 
     def install_package_from_pypi(self, test=False):
         pypi_name = 'Test PyPI' if test else 'PyPI'
