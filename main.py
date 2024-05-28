@@ -123,6 +123,7 @@ class PipUniversalProjects:
         
         fix_and_optimize(self.project_dir, self.user_options)
         
+
     def build_wheel(self):
         
         pt(self.setup_file_path, self.dist_dir)
@@ -134,7 +135,6 @@ class PipUniversalProjects:
         wheels = [f for f in os.listdir(self.dist_dir) if f.endswith('.whl')]
         if wheels:
             self.wheel_path = os.path.join(self.dist_dir, wheels[0])
-            print('\n - Success - ')
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
