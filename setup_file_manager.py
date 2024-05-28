@@ -13,6 +13,9 @@ class SetupFileManager:
         search_setup_in_dist_dir = os.path.join(self.build_dist_dir, 'setup.py')
         pt(search_setup_path, search_main_py_path, search_setup_in_dist_dir)
         
+        # Ensure the build_dist directory exists before attempting to copy files
+        os.makedirs(self.build_dist_dir, exist_ok=True)
+        
         if os.path.exists(search_setup_path):
             data = self.parse_setup_file(search_setup_path)
             return data, search_setup_path
@@ -54,6 +57,9 @@ class SetupFileManager:
         new_utilities_path = os.path.join(self.build_dist_dir, 'setup_utilities.py')
         pt(template_path, utilities_path, new_setup_path, new_utilities_path)
         
+        # Ensure the build_dist directory exists
+        os.makedirs(self.build_dist_dir, exist_ok=True)
+        
         ## make copies
         shutil.copy(utilities_path, new_utilities_path)
         shutil.copy(template_path, new_setup_path)
@@ -61,20 +67,31 @@ class SetupFileManager:
         ## modify the copied setup.py
         with open(new_setup_path, 'r') as file:
             template_content = file.read()
-            
+        
         modified_content = template_content.replace('{{package_name}}', 'example_package').replace('{{version}}', '0.1.0')
         
         with open(new_setup_path, 'w') as file:
             file.write(modified_content)
 
-        return {'package_name': 'example_package', 'version': '0.1.0'}
+            return {'package_name': 'example_package', 'version': '0.1.0'}
 
 
 if __name__ == '__main__':
-    setup_file_manager = SetupFileManager(
-        project_dir=r'C:\.PythonProjects\SavedTests\test_package_for_builds',
-        build_dist_dir=r'C:\.PythonProjects\SavedTests\test_package_for_builds\build_dist'
+    project_dirs = [
+        "A_with_setup_py",
+        "B_with_main",
+        "C_with_nothing",
+        "D_with_requirements",
+        "E_with_existing_init_files",
+        ]
+
+    for project_dir in project_dirs:    
+        setup_file_manager = SetupFileManager(
+            project_dir=os.path.join(
+                r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages', project_dir),
+            build_dist_dir=os.path.join(
+                r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages', project_dir, 'build_dist')
         )
-    setup_data = setup_file_manager.get_setup_file_data()
+        setup_data = setup_file_manager.get_setup_file_data()
     pt(setup_data)
 

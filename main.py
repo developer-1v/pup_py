@@ -5,14 +5,20 @@
     manages its installation.
     
     Steps included:
+    - Get user options (optional)
     - Initialize setup.py (Generate and/or read data).
+    - Verify availability of package name
+    - Fix and optimize package (optional)
     - Build the wheel file
     - Uninstall any previous version of the package
     - Install the newly created wheel locally
     - Test the installed wheel
     - Uninstall the local wheel
-    - Upload the wheel to PyPI
-    - Install the package from PyPI
+    - Upload the wheel to PyPI or Test Pypi
+    - Install the package from PyPI or Test Pypi
+    
+    
+    
 '''
 
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
@@ -25,7 +31,7 @@ from setup_file_manager import SetupFileManager
 from fix_and_optimize import fix_and_optimize
 from pypi_verifier import PyPIVerifier
 
-## TODO DELETE: Why did I put this here? 
+## TODO DELETE: Is this needed? 
 sys.path.append(os.path.dirname(__file__))
 
 
@@ -55,7 +61,7 @@ class PipUniversalProjects:
         self.exe_build_dir = os.path.join(self.exe_system_dir, 'build_exe')
         os.makedirs(self.exe_dist_dir, exist_ok=True)
         os.makedirs(self.exe_build_dir, exist_ok=True)
-                
+        
         ## EXECUTE!
         self.execute_full_workflow()
 
@@ -110,7 +116,7 @@ class PipUniversalProjects:
         pt.c(f'\n------------------------{self.steps_counter} Fixing and Optimizing Package------------------------')
         
         fix_and_optimize(self.user_options, self.project_dir)
-        
+
     def build_wheel(self):
         self.steps_counter += 1
         pt.c(f'\n------------------------{self.steps_counter} Building Wheel------------------------')
@@ -147,29 +153,40 @@ class PipUniversalProjects:
         pt.c(f'\n------------------------{self.steps_counter} Uninstalling Local Package------------------------')
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
-    def upload_wheel_to_pypi(self):
+    def upload_wheel_to_pypi(self, test_pypi=False):
         self.steps_counter += 1
-        pt.c(f'\n------------------------{self.steps_counter} Uploading Package to PyPI------------------------')
-        twine_upload(['upload', self.wheel_path])
+        repository_url = 'https://test.pypi.org/legacy/' if test_pypi else 'https://upload.pypi.org/legacy/'
+        pt.c(f'\n------------------------{self.steps_counter} Uploading Package to {"Test PyPI" if test_pypi else "PyPI"}------------------------')
+        twine_upload(['upload', '--repository-url', repository_url, self.wheel_path])
 
-    def install_package_from_pypi(self):
+    def install_package_from_pypi(self, test=False):
         self.steps_counter += 1
-        pt.c(f'\n------------------------{self.steps_counter} Installing Package from PyPI------------------------')
-        subprocess.run([sys.executable, '-m', 'pip', 'install', self.package_name], check=True)
+        pypi_name = 'Test PyPI' if test else 'PyPI'
+        pt.c(f'\n------------------------{self.steps_counter} Installing Package from {pypi_name}------------------------')
+        index_url = 'https://test.pypi.org/simple/' if test else 'https://pypi.org/simple'
+        subprocess.run([sys.executable, '-m', 'pip', 'install', '--index-url', index_url, self.package_name], check=True)
 
-def main():
+def main(project_dir, destination_dir=None):
     ...
-    # pup = PipUniversalProjects(
-    #     project_dir=r'C:\.PythonProjects\smak', 
-    #     destination_dir=r'C:\.PythonProjects\smak\build_dist',
-    #     )
+    pup = PipUniversalProjects(
+        project_dir=project_dir, 
+        destination_dir=destination_dir,
+        )
 
 
 
 
 if __name__ == '__main__':
-    # main()
-    pup = PipUniversalProjects(
-    project_dir=r'C:\.PythonProjects\SavedTests\test_package_for_builds', 
-    # destination_dir=r'C:\.PythonProjects\test_output',
-    )
+    project_dirs = [
+        "A_with_setup_py",
+        "B_with_main",
+        "C_with_nothing",
+        "D_with_requirements",
+        "E_with_existing_init_files",
+        ]
+
+    for project_dir in project_dirs:    
+        main(
+            project_dir=os.path.join(
+                r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages', project_dir),
+        )

@@ -65,7 +65,7 @@ def setup_package():
         tests_require=['pytest>=3'],
         url='https://github.com/developer-1v/pup_py',
         project_urls={
-            'Documentation': 'https://pup_py.readthedocs.io',
+            # 'Documentation': 'https://pup_py.readthedocs.io',
             'Source': 'https://github.com/developer-1v/pup_py',
             'Tracker': 'https://github.com/developer-1v/pup_py/issues',
             'PyPI': 'https://pypi.org/project/pup_py/'
