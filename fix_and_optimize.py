@@ -42,9 +42,10 @@ def create_init_files(project_dir, user_options):
         ".terraform",  # Terraform module cache
     ]
     
-    if user_options['excluded_folders']:
-        _excludes.extend(user_options['excluded_folders'])  # Properly extend the list with any additional excluded folders
-
+    additional_excludes = user_options.get('excluded_folders', [])
+    if additional_excludes:
+        _excludes.extend(additional_excludes)
+    
     created_init_in_dirs = []
     valid_dirs = []  # List to store directories that should be traversed
     for root, dirs, files in os.walk(project_dir):
@@ -100,8 +101,8 @@ def remove_init_files(project_dir):
     with open(created_init_files_json, 'w') as f:
         json.dump(created_init_files, f)
 
-def fix_and_optimize(user_options, project_dir):
-    create_init_files(user_options, project_dir)
+def fix_and_optimize(project_dir, user_options):
+    create_init_files(project_dir, user_options)
 
 def remove_fixes_and_optimizations(project_dir):
     remove_init_files(project_dir)
@@ -109,7 +110,7 @@ def remove_fixes_and_optimizations(project_dir):
 if __name__ == "__main__":
 
     fix_and_optimize(
-        project_dir='C:\.PythonProjects\SavedTests\test_package_for_builds',
+        project_dir=r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages\C_with_nothing',
         user_options={'excluded_folders': ['']})
     
     pt.c('\n - Successfully fixed and optimized your project!')
