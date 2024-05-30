@@ -46,6 +46,11 @@ sys.path.append(os.path.dirname(__file__))
 class PipUniversalProjects:
     def __init__(self, project_dir, destination_dir=None, package_name=None, use_gui=False):
         self.project_dir = project_dir
+        if not os.path.exists(project_dir):
+            pt.c(' -- You must pass a legitimate project direcotry to try to process this!!!')
+            pt.c(' -- Error: message for production:')
+            raise FileNotFoundError(f'Project directory {project_dir} does not exist.')
+            
         self.destination_dir = project_dir if destination_dir is None else destination_dir
         self.package_name = os.path.basename(project_dir) if package_name is None else package_name
         self.use_gui = use_gui
@@ -77,7 +82,7 @@ class PipUniversalProjects:
     def _execute_full_workflow(self):
         self.user_options()
         self.check_gen_requirements()
-        pt.ex()
+        # pt.ex()
         self.setup_file_data()
         self.verify_package_name()
         self.fix_and_optimize_package()
@@ -125,7 +130,7 @@ class PipUniversalProjects:
             if not os.path.exists(self.build_dist_dir):
                 os.makedirs(self.build_dist_dir)
             pt(self.build_dist_dir, requirements_path_build)
-            pt.ex()
+            # pt.ex()
             ignore_dirs = 'dist,build,venv,pycache'  ## NOTE: No spaces after commas!!!
             subprocess.run([
                     'pipreqs', 
@@ -139,7 +144,6 @@ class PipUniversalProjects:
         except Exception as e:
                 pt.e()
                 pt.ex(e)
-        pt.ex()
 
     def setup_file_data(self):
         
@@ -214,7 +218,8 @@ def main(project_dir, destination_dir=None):
 if __name__ == '__main__':
     base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages'
     main_projects_path = os.path.join(base_path, 'projects')
-    clean_and_create_new_projects_path = os.path.join(base_path, 'clean_and_create_new_projects.py')
+    clean_and_create_new_projects_path = os.path.join(
+        base_path, 'clean_and_create_new_projects.py')
     
     ## Clean out old projects and create new ones
     subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
@@ -232,7 +237,4 @@ if __name__ == '__main__':
                     ]
 
     for project_dir in project_dirs:    
-        main(
-            project_dir=os.path.join(
-                r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages', project_dir),
-        )
+        main(os.path.join(main_projects_path, project_dir))
