@@ -26,7 +26,7 @@
 '''
 
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
-import shutil
+import shutil, re
 
 from setuptools import setup
 from twine.commands.upload import upload as twine_upload
@@ -77,6 +77,7 @@ class PipUniversalProjects:
     def _execute_full_workflow(self):
         self.user_options()
         self.check_gen_requirements()
+        pt.ex()
         self.setup_file_data()
         self.verify_package_name()
         self.fix_and_optimize_package()
@@ -123,9 +124,9 @@ class PipUniversalProjects:
             # Ensure the directory exists
             if not os.path.exists(self.build_dist_dir):
                 os.makedirs(self.build_dist_dir)
-            pt(self.build_dist_dir)
-
-            ignore_dirs = 'dist,build,venv,pycache'  # No spaces after commas
+            pt(self.build_dist_dir, requirements_path_build)
+            pt.ex()
+            ignore_dirs = 'dist,build,venv,pycache'  ## NOTE: No spaces after commas!!!
             subprocess.run([
                     'pipreqs', 
                     self.build_dist_dir, 
@@ -138,6 +139,7 @@ class PipUniversalProjects:
         except Exception as e:
                 pt.e()
                 pt.ex(e)
+        pt.ex()
 
     def setup_file_data(self):
         
@@ -201,22 +203,33 @@ class PipUniversalProjects:
         subprocess.run([sys.executable, '-m', 'pip', 'install', '--index-url', index_url, self.package_name], check=True)
 
 
+
 def main(project_dir, destination_dir=None):
     ...
     pup = PipUniversalProjects(
         project_dir=project_dir, 
         destination_dir=destination_dir,
-        )
-
+    )
 
 if __name__ == '__main__':
-    project_dirs = [
-        "A_with_setup_py",
-        "B_with_main",
-        "C_with_nothing",
-        "D_with_requirements",
-        "E_with_existing_init_files",
-        ]
+    base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages'
+    main_projects_path = os.path.join(base_path, 'projects')
+    clean_and_create_new_projects_path = os.path.join(base_path, 'clean_and_create_new_projects.py')
+    
+    ## Clean out old projects and create new ones
+    subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
+    
+    ## Dynamically get names of all test projects that start with a capital letter and underscore:
+    project_dirs = [name for name in os.listdir(base_path)
+                    if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
+
+    ## TODO DELETE: temporary testing of individual projects
+    project_dirs = ['A_with_nothing',
+                    # 'B_with_pyproject_toml',
+                    # 'C_with_setup_py',
+                    # 'D_with_requirements',
+                    # 'E_with_existing_init_files',
+                    ]
 
     for project_dir in project_dirs:    
         main(

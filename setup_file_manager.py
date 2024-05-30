@@ -92,12 +92,17 @@ class SetupFileManager:
 
 if __name__ == '__main__':
 
-    base_path = r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages'
+    base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects'
     
-    ## Get all of the test projects that start with a capital letter and underscore:
+    ## Dynamically get names of all test projects that start with a capital letter and underscore:
     project_dirs = [name for name in os.listdir(base_path)
                     if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
 
+    ## TODO DELETE: temporary testing of individual projects
+    project_dirs = ['A_with_nothing',
+                    ]
+    
+    
     for project_dir in project_dirs:    
         setup_file_manager = SetupFileManager(
             project_dir=os.path.join(base_path, project_dir),
