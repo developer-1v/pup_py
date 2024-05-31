@@ -1,7 +1,7 @@
 
 '''PUP (Pip Universal Projects) - An automated one-click solution for pip 
     package management:
-    PUP takes a project_dir, builds a pip package, uploads it to PyPI, and 
+    PUP takes a project_directory builds a pip package, uploads it to PyPI, and 
     manages its installation.
     
     Steps included:
@@ -44,47 +44,49 @@ sys.path.append(os.path.dirname(__file__))
 
 @auto_decorate_methods
 class PipUniversalProjects:
-    def __init__(self, project_dir, destination_dir=None, package_name=None, use_gui=False):
-        self.project_dir = project_dir
-        if not os.path.exists(project_dir):
-            pt.c(' -- You must pass a legitimate project direcotry to try to process this!!!')
+    def __init__(self, 
+            project_directory, 
+            destination_directory=None,
+            distribution_subfolder='build_dist',
+            pypi_structure_subfolder='pypi_system',
+            pypi_build_subfolder='build_pypi',
+            pypi_distribution_subfolder='dist_pypi',
+            use_standard_build_directories = False,
+            package_name=None, 
+            use_gui=False, 
+            ):
+        
+        ## Valid Project Check:
+        if not os.path.exists(project_directory):
+            pt.c(' -- You must pass a legitimate project directory to try to process this!!!')
             pt.c(' -- Error: message for production:')
-            raise FileNotFoundError(f'Project directory {project_dir} does not exist.')
-            
-        self.destination_dir = project_dir if destination_dir is None else destination_dir
-        self.package_name = os.path.basename(project_dir) if package_name is None else package_name
+            raise FileNotFoundError(f'Project directory {project_directory} does not exist.')
+        
+        ## Args
+        self.project_directory = project_directory
+        self.destination_directory = project_directory if destination_directory is None else destination_directory
+        self.distribution_subfolder = distribution_subfolder
+        self.pypi_structure_subfolder = pypi_structure_subfolder
+        self.pypi_build_subfolder = pypi_build_subfolder
+        self.pypi_distribution_subfolder = pypi_distribution_subfolder
+        self.use_standard_build_directories = use_standard_build_directories
+        self.package_name = os.path.basename(project_directory) if package_name is None else package_name
         self.use_gui = use_gui
         
-        ## subdirectories for project
-        self.build_dist_dir = os.path.join(self.destination_dir, 'build_dist')
-        self.pypi_system_dir = os.path.join(self.build_dist_dir, 'pypi_system')
-        self.dist_dir = os.path.join(self.pypi_system_dir, 'dist_pypi')
-        self.build_dir = os.path.join(self.pypi_system_dir, 'build_pypi')
-        os.makedirs(self.dist_dir, exist_ok=True)
-        os.makedirs(self.build_dir, exist_ok=True)
-        
-        ## TEMP: Creation of exe directories for organizational testing
-        self.exe_system_dir = os.path.join(self.build_dist_dir, 'exe_system')
-        self.exe_dist_dir = os.path.join(self.exe_system_dir, 'dist_exe')
-        self.exe_build_dir = os.path.join(self.exe_system_dir, 'build_exe')
-        os.makedirs(self.exe_dist_dir, exist_ok=True)
-        os.makedirs(self.exe_build_dir, exist_ok=True)
-        
-        ## Other args:
         self.ui_gui_manager = UiGuiManager(use_gui)
-        args = sys.argv
         self.wheel_path = None
         self.steps_counter = 0
         
-        ## EXECUTE!
+        ## Execute
         self._execute_full_workflow()
 
     def _execute_full_workflow(self):
         self.user_options()
+        self.create_directories()
         self.check_gen_requirements()
         # pt.ex()
         self.setup_file_data()
-        self.verify_package_name()
+        self.verify_package_name_availability()
         self.fix_and_optimize_package()
         self.build_wheel()
         self.uninstall_package()
@@ -110,34 +112,60 @@ class PipUniversalProjects:
             'excluded_folders': [''],
             }
 
+    def create_directories(self):
+        
+        ## For "Traditional" building locations/directories
+        if self.use_standard_build_directories:
+            self.distribution_subfolder = ''
+            self.pypi_structure_subfolder='',
+            self.pypi_build_subfolder='build',
+            self.pypi_distribution_subfolder='dist',
+            
+        ## pup_py recommmended Subdirectories for project
+        self.distribution_directory = os.path.join(self.destination_directory, self.distribution_subfolder)
+        self.pypi_structure_directory = os.path.join(self.distribution_directory, self.pypi_structure_subfolder)
+        self.pypi_build_directory = os.path.join(self.pypi_structure_directory, self.pypi_build_subfolder)
+        self.pypi_distribution_directory = os.path.join(self.pypi_structure_directory, self.pypi_distribution_subfolder)
+        os.makedirs(self.pypi_distribution_directory, exist_ok=True)
+        os.makedirs(self.pypi_build_directory, exist_ok=True)
+        
+        ## TEMP: Creation of exe directories for organizational testing
+        ## These would normally only be created in the Persist App for creating exe's. 
+        ## But is here for testing compatibility between the two systems. 
+        self.exe_structure_directory = os.path.join(self.distribution_directory, 'exe_system')
+        self.exe_distribution_directory = os.path.join(self.exe_structure_directory, 'dist_exe')
+        self.exe_build_directory = os.path.join(self.exe_structure_directory, 'build_exe')
+        os.makedirs(self.exe_distribution_directory, exist_ok=True)
+        os.makedirs(self.exe_build_directory, exist_ok=True)
+
     def check_gen_requirements(self):
         # Check if requirements.txt exists in either project_dir or build_dist_dir
-        requirements_path_project = os.path.join(self.project_dir, 'requirements.txt')
-        requirements_path_build = os.path.join(self.build_dist_dir, 'requirements.txt')
-
-        if os.path.exists(requirements_path_project):
-            shutil.copy(requirements_path_project, requirements_path_build)
+        req_path_in_project = os.path.join(self.project_directory, 'requirements.txt')
+        req_path_in_distribution_subfolder = os.path.join(self.distribution_subfolder, 'requirements.txt')
+        pt(req_path_in_project, req_path_in_distribution_subfolder)
+        if os.path.exists(req_path_in_project):
+            shutil.copy(req_path_in_project, req_path_in_distribution_subfolder)
             pt.c('-- requirements.txt already exists, copying to build_dist_dir')
             return
         
-        if os.path.exists(requirements_path_build):
+        if os.path.exists(req_path_in_distribution_subfolder):
             pt.c('-- requirements.txt already exists.')
             return
 
         try:
             pt.c('-- Generating requirements.txt')
             # Ensure the directory exists
-            if not os.path.exists(self.build_dist_dir):
-                os.makedirs(self.build_dist_dir)
-            pt(self.build_dist_dir, requirements_path_build)
+            if not os.path.exists(self.distribution_subfolder):
+                os.makedirs(self.distribution_subfolder)
+            pt(self.distribution_subfolder, req_path_in_distribution_subfolder)
             # pt.ex()
             ignore_dirs = 'dist,build,venv,pycache'  ## NOTE: No spaces after commas!!!
             subprocess.run([
                     'pipreqs', 
-                    self.build_dist_dir, 
+                    self.distribution_subfolder, 
                     '--force',  
                     f'--ignore={ignore_dirs}',
-                    '--savepath', requirements_path_build
+                    '--savepath', req_path_in_distribution_subfolder
                     ],
                 check=True)
             pt.c('-- Finished Creating requirements.txt in build_dist_dir')
@@ -147,10 +175,10 @@ class PipUniversalProjects:
 
     def setup_file_data(self):
         
-        self.setup_file_manager = SetupFileManager(self.project_dir, self.build_dist_dir)
+        self.setup_file_manager = SetupFileManager(self.project_directory, self.distribution_subfolder)
         self.setup_file_data, self.setup_file_path = self.setup_file_manager.get_setup_file_data()
 
-    def verify_package_name(self):
+    def verify_package_name_availability(self):
         
         verifier = PyPIVerifier(self.package_name)
         self.is_new_package, self.is_our_package, message = verifier.check_package_status("your_username")
@@ -161,23 +189,23 @@ class PipUniversalProjects:
             new_package_name = self.user_manager.prompt_for_username()
             if new_package_name:
                 self.package_name = new_package_name
-                self.verify_package_name()  ## Re-verify with new name
+                self.verify_package_name_availability()  ## Re-verify with new name
 
     def fix_and_optimize_package(self):
         
-        fix_and_optimize(self.project_dir, self.user_options)
+        fix_and_optimize(self.project_directory, self.user_options)
 
     def build_wheel(self):
         
-        pt(self.setup_file_path, self.dist_dir)
-        # pt.ex()
-        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.dist_dir]
+        pt(self.setup_file_path, self.distribution_subfolder)
+        pt.ex()
+        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.distribution_subfolder]
         # pt()
-        subprocess.run(setup_args, cwd=self.project_dir, check=True)
+        subprocess.run(setup_args, cwd=self.project_directory, check=True)
         # pt()
-        wheels = [f for f in os.listdir(self.dist_dir) if f.endswith('.whl')]
+        wheels = [f for f in os.listdir(self.distribution_subfolder) if f.endswith('.whl')]
         if wheels:
-            self.wheel_path = os.path.join(self.dist_dir, wheels[0])
+            self.wheel_path = os.path.join(self.distribution_subfolder, wheels[0])
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
@@ -208,16 +236,17 @@ class PipUniversalProjects:
 
 
 
-def main(project_dir, destination_dir=None):
+def main(project_directory, destination_directory=None):
     ...
     pup = PipUniversalProjects(
-        project_dir=project_dir, 
-        destination_dir=destination_dir,
+        project_directory=project_directory,
+        destination_directory=destination_directory,
     )
 
 if __name__ == '__main__':
     base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages'
-    main_projects_path = os.path.join(base_path, 'projects')
+    main_projects_path = os.path.join(
+        base_path, 'projects')
     clean_and_create_new_projects_path = os.path.join(
         base_path, 'clean_and_create_new_projects.py')
     
@@ -225,8 +254,8 @@ if __name__ == '__main__':
     subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
     
     ## Dynamically get names of all test projects that start with a capital letter and underscore:
-    project_dirs = [name for name in os.listdir(base_path)
-                    if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
+    project_dirs = [name for name in os.listdir(main_projects_path)
+                    if os.path.isdir(os.path.join(main_projects_path, name)) and re.match(r'[A-Z]_', name)]
 
     ## TODO DELETE: temporary testing of individual projects
     project_dirs = ['A_with_nothing',
