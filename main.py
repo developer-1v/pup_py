@@ -27,9 +27,9 @@
 
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
 import shutil, re
-
-from setuptools import setup
+import site
 from twine.commands.upload import upload as twine_upload
+from twine.settings import Settings
 
 from print_tricks import pt
 from decorators import auto_decorate_methods
@@ -53,7 +53,8 @@ class PipUniversalProjects:
             pypi_distribution_subfolder='dist_pypi',
             use_standard_build_directories=False,
             package_name=None, 
-            use_gui=False, 
+            use_test_pypi=False,
+            use_gui=False,
             ):
         
         ## Check for Valid Project:
@@ -71,6 +72,7 @@ class PipUniversalProjects:
         self.pypi_distribution_subfolder = pypi_distribution_subfolder
         self.use_standard_build_directories = use_standard_build_directories
         self.package_name = os.path.basename(project_directory) if package_name is None else package_name
+        self.use_test_pypi = use_test_pypi
         self.use_gui = use_gui
         
         self.ui_gui_manager = UiGuiManager(use_gui)
@@ -91,7 +93,7 @@ class PipUniversalProjects:
         self.build_wheel()
         self.uninstall_package()
         self.install_wheel_locally()
-        pt.ex()
+        # pt.ex()
         self.test_installed_package()
         self.uninstall_local_wheel()
         self.upload_wheel_to_pypi()
@@ -221,8 +223,22 @@ class PipUniversalProjects:
         
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
+
+
     def install_wheel_locally(self):
-        subprocess.run([sys.executable, '-m', 'pip', 'install', self.wheel_path, '--force-reinstall'], check=True)
+        # Get the user base binary directory (where the scripts go)
+        user_script_dir = site.USER_BASE + os.sep + 'Scripts'
+        
+        # Add the user script directory to the PATH environment variable
+        os.environ['PATH'] += os.pathsep + user_script_dir
+        pt(user_script_dir, os.pathsep + user_script_dir)
+        print(f"Added {user_script_dir} to PATH")
+        sys.path.append(user_script_dir)
+        # pt.ex()
+        # pt.ex()
+        # Now run pip install with the --user option
+        subprocess.run([sys.executable, '-m', 'pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
+
 
     def test_installed_package(self):
         print("Testing installed package...")
@@ -230,15 +246,36 @@ class PipUniversalProjects:
     def uninstall_local_wheel(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
-    def upload_wheel_to_pypi(self, test_pypi=False):
-        repository_url = 'https://test.pypi.org/legacy/' if test_pypi else 'https://upload.pypi.org/legacy/'
-        pt.c(f'Uploading Package to {"Test PyPI" if test_pypi else "PyPI"}')
-        twine_upload(['upload', '--repository-url', repository_url, self.wheel_path])
+    def upload_wheel_to_pypi(self):
+        # Determine the correct repository URL and token based on whether you're using Test PyPI or PyPI
+        if self.use_test_pypi:
+            repository_url = 'https://test.pypi.org/legacy/'
+            token = os.getenv('TEST_PYPI_TOKEN')
+        else:
+            repository_url = 'https://upload.pypi.org/legacy/'
+            token = os.getenv('PYPI_TOKEN')
 
-    def install_package_from_pypi(self, test=False):
-        pypi_name = 'Test PyPI' if test else 'PyPI'
-        pt.c(f'Installing Package from {pypi_name}')
-        index_url = 'https://test.pypi.org/simple/' if test else 'https://pypi.org/simple'
+        # Check if the token is available
+        if not token:
+            raise Exception(f"{'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.")
+
+        pt.c(f'Uploading Package to {"Test PyPI" if self.use_test_pypi else "PyPI"} using token authentication')
+
+        # Setup Twine settings with the token
+        settings = Settings(
+            repository_url=repository_url,
+            username="__token__",
+            password=token,
+            non_interactive=True,
+            # verbose=True,
+        )
+        dists = [self.wheel_path]
+        twine_upload(settings, dists)
+
+    def install_package_from_pypi(self):
+        pypi_type = 'Test PyPI' if self.use_test_pypi else 'PyPI'
+        pt.c(f'Installing Package from {pypi_type}')
+        index_url = 'https://test.pypi.org/simple/' if self.use_test_pypi else 'https://pypi.org/simple'
         subprocess.run([sys.executable, '-m', 'pip', 'install', '--index-url', index_url, self.package_name], check=True)
 
 
@@ -276,6 +313,7 @@ def test():
         PipUniversalProjects(
             project_directory=os.path.join(main_projects_path, project_dir),
             use_standard_build_directories=True,
+            use_test_pypi=True,
             )
         
 if __name__ == '__main__':
