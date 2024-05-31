@@ -1,7 +1,7 @@
 import os, json
 from print_tricks import pt
 
-def create_init_files(project_dir, user_options):
+def create_init_files(project_dir, distribution_dir, user_options):
     _excludes = [
         "__pycache__", # python cache
         ".directory", # directory
@@ -68,16 +68,16 @@ def create_init_files(project_dir, user_options):
             created_init_in_dirs.append(root)  # Add the directory to the list where __init__.py was created
 
     ## Save the paths of created __init__.py files, so we can reverse this later if needed
-    created_init_files_json = os.path.join(project_dir, 'build_dist', 'created_init_files.json')
+    created_init_files_json = os.path.join(distribution_dir, 'created_init_files.json')
     with open(created_init_files_json, 'w') as f:
         json.dump(created_init_in_dirs, f)
 
-def remove_init_files(project_dir):
+def remove_init_files(project_dir, distribution_dir):
     '''Created in case a user needs to reverse/remove anything that my 
     fix and optimzie has done
     
     '''
-    created_init_files_json = os.path.join(project_dir, 'build_dist', 'created_init_files.json')
+    created_init_files_json = os.path.join(distribution_dir, 'created_init_files.json')
     
     ## Load the paths of created __init__.py files
     try:
@@ -101,22 +101,22 @@ def remove_init_files(project_dir):
     with open(created_init_files_json, 'w') as f:
         json.dump(created_init_files, f)
 
-def fix_and_optimize(project_dir, user_options):
-    create_init_files(project_dir, user_options)
+def fix_and_optimize(project_dir, distribution_dir, user_options):
+    create_init_files(project_dir, distribution_dir, user_options)
 
-def remove_fixes_and_optimizations(project_dir):
-    remove_init_files(project_dir)
+def remove_fixes_and_optimizations(project_dir, distribution_dir):
+    remove_init_files(project_dir, distribution_dir)
 
 if __name__ == "__main__":
 
+    dir = r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages\projects\A_with_nothing'
     fix_and_optimize(
-        project_dir=r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages\C_with_nothing',
+        project_dir=dir,
         user_options={'excluded_folders': ['']})
     
     pt.c('\n - Successfully fixed and optimized your project!')
     
     input('Press enter to remove fixes and optimizations')
     
-    remove_fixes_and_optimizations(
-        project_dir='C:\.PythonProjects\SavedTests\test_package_for_builds')
+    remove_fixes_and_optimizations(project_dir=dir)
 

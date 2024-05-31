@@ -51,12 +51,12 @@ class PipUniversalProjects:
             pypi_structure_subfolder='pypi_system',
             pypi_build_subfolder='build_pypi',
             pypi_distribution_subfolder='dist_pypi',
-            use_standard_build_directories = False,
+            use_standard_build_directories=False,
             package_name=None, 
             use_gui=False, 
             ):
         
-        ## Valid Project Check:
+        ## Check for Valid Project:
         if not os.path.exists(project_directory):
             pt.c(' -- You must pass a legitimate project directory to try to process this!!!')
             pt.c(' -- Error: message for production:')
@@ -117,9 +117,16 @@ class PipUniversalProjects:
         ## For "Traditional" building locations/directories
         if self.use_standard_build_directories:
             self.distribution_subfolder = ''
-            self.pypi_structure_subfolder='',
-            self.pypi_build_subfolder='build',
-            self.pypi_distribution_subfolder='dist',
+            self.pypi_structure_subfolder=''
+            self.pypi_build_subfolder='build'
+            self.pypi_distribution_subfolder='dist'
+            
+            pt(
+                self.distribution_subfolder, 
+                self.pypi_structure_subfolder, 
+                self.pypi_build_subfolder, 
+                self.pypi_distribution_subfolder
+            )
             
         ## pup_py recommmended Subdirectories for project
         self.distribution_directory = os.path.join(self.destination_directory, self.distribution_subfolder)
@@ -141,31 +148,31 @@ class PipUniversalProjects:
     def check_gen_requirements(self):
         # Check if requirements.txt exists in either project_dir or build_dist_dir
         req_path_in_project = os.path.join(self.project_directory, 'requirements.txt')
-        req_path_in_distribution_subfolder = os.path.join(self.distribution_subfolder, 'requirements.txt')
-        pt(req_path_in_project, req_path_in_distribution_subfolder)
+        req_path_in_distribution_directory = os.path.join(self.distribution_directory, 'requirements.txt')
+        pt(req_path_in_project, req_path_in_distribution_directory)
         if os.path.exists(req_path_in_project):
-            shutil.copy(req_path_in_project, req_path_in_distribution_subfolder)
+            shutil.copy(req_path_in_project, req_path_in_distribution_directory)
             pt.c('-- requirements.txt already exists, copying to build_dist_dir')
             return
         
-        if os.path.exists(req_path_in_distribution_subfolder):
+        if os.path.exists(req_path_in_distribution_directory):
             pt.c('-- requirements.txt already exists.')
             return
 
         try:
             pt.c('-- Generating requirements.txt')
             # Ensure the directory exists
-            if not os.path.exists(self.distribution_subfolder):
-                os.makedirs(self.distribution_subfolder)
-            pt(self.distribution_subfolder, req_path_in_distribution_subfolder)
+            if not os.path.exists(self.distribution_directory):
+                os.makedirs(self.distribution_directory)
+            pt(self.distribution_directory, req_path_in_distribution_directory)
             # pt.ex()
             ignore_dirs = 'dist,build,venv,pycache'  ## NOTE: No spaces after commas!!!
             subprocess.run([
                     'pipreqs', 
-                    self.distribution_subfolder, 
+                    self.distribution_directory, 
                     '--force',  
                     f'--ignore={ignore_dirs}',
-                    '--savepath', req_path_in_distribution_subfolder
+                    '--savepath', req_path_in_distribution_directory
                     ],
                 check=True)
             pt.c('-- Finished Creating requirements.txt in build_dist_dir')
@@ -175,7 +182,7 @@ class PipUniversalProjects:
 
     def setup_file_data(self):
         
-        self.setup_file_manager = SetupFileManager(self.project_directory, self.distribution_subfolder)
+        self.setup_file_manager = SetupFileManager(self.project_directory, self.distribution_directory)
         self.setup_file_data, self.setup_file_path = self.setup_file_manager.get_setup_file_data()
 
     def verify_package_name_availability(self):
@@ -193,19 +200,19 @@ class PipUniversalProjects:
 
     def fix_and_optimize_package(self):
         
-        fix_and_optimize(self.project_directory, self.user_options)
+        fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
     def build_wheel(self):
         
-        pt(self.setup_file_path, self.distribution_subfolder)
-        pt.ex()
-        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.distribution_subfolder]
+        pt(self.setup_file_path, self.distribution_directory)
+        # pt.ex()
+        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.distribution_directory]
         # pt()
         subprocess.run(setup_args, cwd=self.project_directory, check=True)
         # pt()
-        wheels = [f for f in os.listdir(self.distribution_subfolder) if f.endswith('.whl')]
+        wheels = [f for f in os.listdir(self.distribution_directory) if f.endswith('.whl')]
         if wheels:
-            self.wheel_path = os.path.join(self.distribution_subfolder, wheels[0])
+            self.wheel_path = os.path.join(self.distribution_directory, wheels[0])
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
@@ -236,14 +243,14 @@ class PipUniversalProjects:
 
 
 
-def main(project_directory, destination_directory=None):
-    ...
-    pup = PipUniversalProjects(
-        project_directory=project_directory,
-        destination_directory=destination_directory,
-    )
+# def main(project_directory, destination_directory=None):
+#     ...
+#     pup = PipUniversalProjects(
+#         project_directory=project_directory,
+#         destination_directory=destination_directory,
+#     )
 
-if __name__ == '__main__':
+def test():
     base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages'
     main_projects_path = os.path.join(
         base_path, 'projects')
@@ -266,4 +273,10 @@ if __name__ == '__main__':
                     ]
 
     for project_dir in project_dirs:    
-        main(os.path.join(main_projects_path, project_dir))
+        PipUniversalProjects(
+            project_directory=os.path.join(main_projects_path, project_dir),
+            use_standard_build_directories=True,
+            )
+        
+if __name__ == '__main__':
+    test()
