@@ -12,7 +12,7 @@ class SetupFileManager:
         search_setup_in_dist_dir = os.path.join(self.build_dist_dir, 'setup.py')
         pt(search_setup_path, search_main_py_path, search_setup_in_dist_dir)
         
-        # Ensure the build_dist directory exists before attempting to copy files
+        ## Ensure the build_dist directory exists before attempting to copy files
         os.makedirs(self.build_dist_dir, exist_ok=True)
         
         if os.path.exists(search_setup_path):
@@ -93,6 +93,7 @@ class SetupFileManager:
 if __name__ == '__main__':
 
     base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects'
+    os.makedirs(base_path, exist_ok=True)
     
     ## Dynamically get names of all test projects that start with a capital letter and underscore:
     project_dirs = [name for name in os.listdir(base_path)

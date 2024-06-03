@@ -122,7 +122,6 @@ def uninstall():
                     f"You may need to remove this package manually"
             )
         else:
-            # Get all package names in the directory
             package_names = os.listdir(dir)
             
             close_matches = difflib.get_close_matches(package_name, package_names, n=1, cutoff=0.5)

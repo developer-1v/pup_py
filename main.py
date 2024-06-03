@@ -19,9 +19,9 @@
     
     
     TODO:
-    - replace setup.py with pyproject.toml and setuptools with "build" library. 
-    - if they have a setup.py in their project, then convert it to pyproject.toml
-    and place in our build_dist directory.
+    - Integrate my conversion from setup.py to pyproject.toml
+    - replace setuptools with "build" library (for the .toml file) 
+
     
 '''
 
@@ -85,19 +85,20 @@ class PipUniversalProjects:
     def _execute_full_workflow(self):
         self.user_options()
         self.create_directories()
-        self.check_gen_requirements()
-        # pt.ex()
+        self.check_or_gen_requirements()
         self.setup_file_data()
+        # pt.ex()
         self.verify_package_name_availability()
         self.fix_and_optimize_package()
         self.build_wheel()
-        self.uninstall_package()
-        self.install_wheel_locally()
+        self.uninstall_existing_package()
+        self.install_package_locally()
         # pt.ex()
-        self.test_installed_package()
-        self.uninstall_local_wheel()
-        self.upload_wheel_to_pypi()
+        self.test_installed_package() ## Test Local Wheel Package
+        self.uninstall_local_package()
+        self.upload_package_to_pypi()
         self.install_package_from_pypi()
+        self.test_installed_package() ## Test Pypi intalled Package
 
     def user_options(self):
         
@@ -105,11 +106,11 @@ class PipUniversalProjects:
             'fix_and_optimize': True, 
             'create_init_files': True, 
             'build_wheel': True, 
-            'uninstall_package': True, 
-            'install_wheel_locally': True, 
+            'uninstall_existing_package': True, 
+            'install_package_locally': True, 
             'test_installed_package': True, 
-            'uninstall_local_wheel': True, 
-            'upload_wheel_to_pypi': True, 
+            'uninstall_local_package': True, 
+            'upload_package_to_pypi': True, 
             'install_package_from_pypi': True,
             'excluded_folders': [''],
             }
@@ -129,7 +130,7 @@ class PipUniversalProjects:
                 self.pypi_build_subfolder, 
                 self.pypi_distribution_subfolder
             )
-            
+
         ## pup_py recommmended Subdirectories for project
         self.distribution_directory = os.path.join(self.destination_directory, self.distribution_subfolder)
         self.pypi_structure_directory = os.path.join(self.distribution_directory, self.pypi_structure_subfolder)
@@ -147,11 +148,12 @@ class PipUniversalProjects:
         os.makedirs(self.exe_distribution_directory, exist_ok=True)
         os.makedirs(self.exe_build_directory, exist_ok=True)
 
-    def check_gen_requirements(self):
-        # Check if requirements.txt exists in either project_dir or build_dist_dir
+    def check_or_gen_requirements(self):
+        ## Check if requirements.txt exists in either project_dir or build_dist_dir
         req_path_in_project = os.path.join(self.project_directory, 'requirements.txt')
         req_path_in_distribution_directory = os.path.join(self.distribution_directory, 'requirements.txt')
         pt(req_path_in_project, req_path_in_distribution_directory)
+        
         if os.path.exists(req_path_in_project):
             shutil.copy(req_path_in_project, req_path_in_distribution_directory)
             pt.c('-- requirements.txt already exists, copying to build_dist_dir')
@@ -163,11 +165,11 @@ class PipUniversalProjects:
 
         try:
             pt.c('-- Generating requirements.txt')
-            # Ensure the directory exists
+            
             if not os.path.exists(self.distribution_directory):
                 os.makedirs(self.distribution_directory)
             pt(self.distribution_directory, req_path_in_distribution_directory)
-            # pt.ex()
+            
             ignore_dirs = 'dist,build,venv,pycache'  ## NOTE: No spaces after commas!!!
             subprocess.run([
                     'pipreqs', 
@@ -219,13 +221,11 @@ class PipUniversalProjects:
         else:
             raise FileNotFoundError("No wheel file created.")
 
-    def uninstall_package(self):
+    def uninstall_existing_package(self):
         
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
-
-
-    def install_wheel_locally(self):
+    def install_package_locally(self):
         # Get the user base binary directory (where the scripts go)
         user_script_dir = site.USER_BASE + os.sep + 'Scripts'
         
@@ -239,14 +239,29 @@ class PipUniversalProjects:
         # Now run pip install with the --user option
         subprocess.run([sys.executable, '-m', 'pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
 
-
     def test_installed_package(self):
-        print("Testing installed package...")
+        try:
+            # Attempt to import the package
+            __import__(self.package_name)
+            print(f"Successfully imported the package '{self.package_name}'.")
+        except ImportError:
+            print(f"Failed to import the package '{self.package_name}'.")
+            return False
 
-    def uninstall_local_wheel(self):
+        # Use subprocess to run `pip show` and capture the output
+        result = subprocess.run([sys.executable, '-m', 'pip', 'show', self.package_name], capture_output=True, text=True)
+        
+        if result.returncode == 0 and self.package_name in result.stdout:
+            print(f"'pip show' output confirms the package '{self.package_name}' is installed:\n{result.stdout}")
+            return True
+        else:
+            print(f"The package '{self.package_name}' does not appear to be installed correctly.")
+            return False
+
+    def uninstall_local_package(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
-    def upload_wheel_to_pypi(self):
+    def upload_package_to_pypi(self):
         # Determine the correct repository URL and token based on whether you're using Test PyPI or PyPI
         if self.use_test_pypi:
             repository_url = 'https://test.pypi.org/legacy/'
@@ -267,7 +282,7 @@ class PipUniversalProjects:
             username="__token__",
             password=token,
             non_interactive=True,
-            # verbose=True,
+            verbose=True,
         )
         dists = [self.wheel_path]
         twine_upload(settings, dists)
@@ -315,6 +330,6 @@ def test():
             use_standard_build_directories=True,
             use_test_pypi=True,
             )
-        
+
 if __name__ == '__main__':
     test()
