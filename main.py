@@ -22,7 +22,7 @@
     - Integrate my conversion from setup.py to pyproject.toml
     - replace setuptools with "build" library (for the .toml file) 
 
-    
+
 '''
 
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
@@ -38,7 +38,7 @@ from fix_and_optimize import fix_and_optimize
 from pypi_verifier import PyPIVerifier
 from ui_gui_manager import UiGuiManager
 
-## TODO DELETE: Is this needed? 
+## TODO DELETE: Is this needed? TODO 
 sys.path.append(os.path.dirname(__file__))
 
 
