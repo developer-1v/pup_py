@@ -2,18 +2,18 @@ from print_tricks import pt
 import os, re, shutil
 
 class SetupFileManager:
-    def __init__(self, project_dir, build_dist_dir):
-        self.project_dir = project_dir
-        self.build_dist_dir = build_dist_dir
+    def __init__(self, project_directory, distribution_directory):
+        self.project_directory = project_directory
+        self.distribution_directory = distribution_directory
 
     def get_setup_file_data(self):
-        search_setup_path = os.path.join(self.project_dir, 'setup.py')
-        search_main_py_path = os.path.join(self.project_dir, 'main.py')
-        search_setup_in_dist_dir = os.path.join(self.build_dist_dir, 'setup.py')
+        search_setup_path = os.path.join(self.project_directory, 'setup.py')
+        search_main_py_path = os.path.join(self.project_directory, 'main.py')
+        search_setup_in_dist_dir = os.path.join(self.distribution_directory, 'setup.py')
         pt(search_setup_path, search_main_py_path, search_setup_in_dist_dir)
         
         ## Ensure the build_dist directory exists before attempting to copy files
-        os.makedirs(self.build_dist_dir, exist_ok=True)
+        os.makedirs(self.distribution_directory, exist_ok=True)
         
         if os.path.exists(search_setup_path):
             data = self.parse_setup_file(search_setup_path)
@@ -26,7 +26,7 @@ class SetupFileManager:
             else:
                 print("Valid setup.py found and parsed.")
                 pt(data, search_setup_path)
-                pt.ex()
+                # pt.ex()
                 return data, search_setup_path
         elif os.path.exists(search_setup_in_dist_dir):
             data = self.parse_setup_file(search_setup_in_dist_dir)
@@ -65,14 +65,13 @@ class SetupFileManager:
 
     def create_setup_from_template(self):
         this_dir = os.path.dirname(__file__)
-        template_path = os.path.join(this_dir, 'setup_template.py')
+        template_path = os.path.join(this_dir, 'setup_template_example.py')
         utilities_path = os.path.join(this_dir, 'setup_utilities.py')
-        new_setup_path = os.path.join(self.build_dist_dir, 'setup.py')
-        new_utilities_path = os.path.join(self.build_dist_dir, 'setup_utilities.py')
+        new_setup_path = os.path.join(self.distribution_directory, 'setup.py')
+        new_utilities_path = os.path.join(self.distribution_directory, 'setup_utilities.py')
         pt(template_path, utilities_path, new_setup_path, new_utilities_path)
         
-        # Ensure the build_dist directory exists
-        os.makedirs(self.build_dist_dir, exist_ok=True)
+        os.makedirs(self.distribution_directory, exist_ok=True)
         
         ## make copies
         shutil.copy(utilities_path, new_utilities_path)
@@ -96,18 +95,18 @@ if __name__ == '__main__':
     os.makedirs(base_path, exist_ok=True)
     
     ## Dynamically get names of all test projects that start with a capital letter and underscore:
-    project_dirs = [name for name in os.listdir(base_path)
+    project_directories = [name for name in os.listdir(base_path)
                     if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
 
     ## TODO DELETE: temporary testing of individual projects
-    project_dirs = ['A_with_nothing',
+    project_directories = ['A_with_nothing',
                     ]
     
     
-    for project_dir in project_dirs:    
+    for project_directory in project_directories:    
         setup_file_manager = SetupFileManager(
-            project_dir=os.path.join(base_path, project_dir),
-            build_dist_dir=os.path.join(base_path, project_dir, 'build_dist')
+            project_directory=os.path.join(base_path, project_directory),
+            distribution_directory=os.path.join(base_path, project_directory, 'build_dist')
         )
         setup_data = setup_file_manager.get_setup_file_data()
     pt(setup_data)

@@ -22,7 +22,7 @@
     - Integrate my conversion from setup.py to pyproject.toml
     - replace setuptools with "build" library (for the .toml file) 
 
-    
+
 '''
 
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
@@ -38,7 +38,7 @@ from fix_and_optimize import fix_and_optimize
 from pypi_verifier import PyPIVerifier
 from ui_gui_manager import UiGuiManager
 
-## TODO DELETE: Is this needed? 
+## TODO DELETE: Is this needed? TODO 
 sys.path.append(os.path.dirname(__file__))
 
 
@@ -155,8 +155,9 @@ class PipUniversalProjects:
         pt(req_path_in_project, req_path_in_distribution_directory)
         
         if os.path.exists(req_path_in_project):
-            shutil.copy(req_path_in_project, req_path_in_distribution_directory)
-            pt.c('-- requirements.txt already exists, copying to build_dist_dir')
+            if req_path_in_project != req_path_in_distribution_directory:
+                shutil.copy(req_path_in_project, req_path_in_distribution_directory)
+                pt.c('-- requirements.txt already exists, copying to distribution directory')
             return
         
         if os.path.exists(req_path_in_distribution_directory):
@@ -207,16 +208,16 @@ class PipUniversalProjects:
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
     def build_wheel(self):
-        
-        pt(self.setup_file_path, self.distribution_directory)
+        pt(self.setup_file_path, self.pypi_distribution_directory)
         # pt.ex()
-        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.distribution_directory]
+        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.pypi_distribution_directory]
         # pt()
         subprocess.run(setup_args, cwd=self.project_directory, check=True)
         # pt()
-        wheels = [f for f in os.listdir(self.distribution_directory) if f.endswith('.whl')]
+        wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
         if wheels:
-            self.wheel_path = os.path.join(self.distribution_directory, wheels[0])
+            self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
+            pt(self.wheel_path)
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
@@ -235,28 +236,41 @@ class PipUniversalProjects:
         print(f"Added {user_script_dir} to PATH")
         sys.path.append(user_script_dir)
         # pt.ex()
-        # pt.ex()
         # Now run pip install with the --user option
         subprocess.run([sys.executable, '-m', 'pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
 
     def test_installed_package(self):
+        # First, attempt to import the package to check if it's accessible to Python
         try:
-            # Attempt to import the package
             __import__(self.package_name)
             print(f"Successfully imported the package '{self.package_name}'.")
-        except ImportError:
-            print(f"Failed to import the package '{self.package_name}'.")
-            return False
+        except ImportError as e:
+            print(f"Failed to import the package '{self.package_name}'. Error: {e}")
+            sys.exit(1)
 
-        # Use subprocess to run `pip show` and capture the output
+        # Second, use subprocess to run `pip show` to confirm the package is installed and capture the output
         result = subprocess.run([sys.executable, '-m', 'pip', 'show', self.package_name], capture_output=True, text=True)
-        
         if result.returncode == 0 and self.package_name in result.stdout:
             print(f"'pip show' output confirms the package '{self.package_name}' is installed:\n{result.stdout}")
-            return True
         else:
             print(f"The package '{self.package_name}' does not appear to be installed correctly.")
-            return False
+            sys.exit(1)
+
+        # Third, run a small script to ensure the package can execute its functionality
+        with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp:
+            temp.write(
+                f'import {self.package_name}\n'
+                f'print(f"{self.package_name} is installed and can be executed.")\n'.encode('utf-8')
+            )
+            temp_file_name = temp.name
+        try:
+            result = subprocess.run(["python", temp_file_name], capture_output=True, text=True)
+            print(result.stdout)
+            if result.returncode != 0:
+                print(f"Error running test script: {result.stderr}")
+                sys.exit(1)
+        finally:
+            os.remove(temp_file_name)
 
     def uninstall_local_package(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)

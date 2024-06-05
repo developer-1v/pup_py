@@ -1,12 +1,13 @@
 '''
-Development Status:
-    1 - Planning
-    2 - Pre-Alpha
-    3 - Alpha
-    4 - Beta
-    5 - Production/Stable
-    6 - Mature
-    7 - Inactive
+NOTE:
+    Development Status:
+        1 - Planning
+        2 - Pre-Alpha
+        3 - Alpha
+        4 - Beta
+        5 - Production/Stable
+        6 - Mature
+        7 - Inactive
 
 '''
 
@@ -19,14 +20,13 @@ pt.easy_imports('pup_py')
 import setup_utilities
 
 
-
+README = '''Generic Readme for a package'''
+HISTORY = '''Generic History for a package'''
 
 def setup_package():
     """Setup the package with provided metadata and files."""
-    readme = setup_utilities.read_file('README.md')
-    history = setup_utilities.read_file('HISTORY.md')
-    requirements = setup_utilities.generate_requirements()
 
+    requirements = setup_utilities.generate_requirements()
     setup(
         author="Developer 1v",
         author_email='Developer-1v@proton.me',
@@ -49,7 +49,7 @@ def setup_package():
         },
         install_requires=requirements,
         license="MIT License",
-        long_description=readme + '\n\n' + history,
+        long_description=README + '\n\n' + HISTORY,
         include_package_data=True,
         keywords=['pup_py', 'pup', 'puppy', 'Pip Universal Projects', 'automated pip', 
             'pypi publish', 'publish pypi', 'pypi upload', 'upload pypi', 'pypi install', 'install pypi',
