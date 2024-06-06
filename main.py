@@ -20,7 +20,6 @@
     
     TODO:
     - Integrate my conversion from setup.py to pyproject.toml
-    - replace setuptools with "build" library (for the .toml file) 
 
 
 '''
@@ -28,6 +27,8 @@
 import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
 import shutil, re
 import site
+from build.__main__ import build_package
+
 from twine.commands.upload import upload as twine_upload
 from twine.settings import Settings
 
@@ -72,6 +73,7 @@ class PipUniversalProjects:
         self.pypi_distribution_subfolder = pypi_distribution_subfolder
         self.use_standard_build_directories = use_standard_build_directories
         self.package_name = os.path.basename(project_directory) if package_name is None else package_name
+        
         self.use_test_pypi = use_test_pypi
         self.use_gui = use_gui
         
@@ -93,7 +95,6 @@ class PipUniversalProjects:
         self.build_wheel()
         self.uninstall_existing_package()
         self.install_package_locally()
-        # pt.ex()
         self.test_installed_package() ## Test Local Wheel Package
         self.uninstall_local_package()
         self.upload_package_to_pypi()
@@ -187,13 +188,20 @@ class PipUniversalProjects:
 
     def setup_file_data(self):
         
-        self.setup_file_manager = SetupFileManager(self.project_directory, self.distribution_directory)
-        self.setup_file_data, self.setup_file_path = self.setup_file_manager.get_setup_file_data()
+        self.setup_file_manager = SetupFileManager(
+            self.project_directory, 
+            self.distribution_directory,
+            self.package_name,
+            
+            
+            )
+        self.pyproject_data, self.pyproject_file_path = self.setup_file_manager.get_setup_file_data()
 
     def verify_package_name_availability(self):
+        self.user_name = self.pyproject_data['username']
         
         verifier = PyPIVerifier(self.package_name)
-        self.is_new_package, self.is_our_package, message = verifier.check_package_status("your_username")
+        self.is_new_package, self.is_our_package, message = verifier.check_package_status(self.user_name)
         
         pt(message)
         
@@ -208,12 +216,34 @@ class PipUniversalProjects:
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
     def build_wheel(self):
-        pt(self.setup_file_path, self.pypi_distribution_directory)
-        # pt.ex()
-        setup_args = ['python', self.setup_file_path, 'bdist_wheel', '--dist-dir', self.pypi_distribution_directory]
-        # pt()
-        subprocess.run(setup_args, cwd=self.project_directory, check=True)
-        # pt()
+        import subprocess
+        import os
+
+        # Log the contents of the project directory
+        print("Contents of the project directory:")
+        for root, dirs, files in os.walk(self.project_directory):
+            for file in files:
+                print(os.path.join(root, file))
+
+        pt(self.pyproject_file_path, self.project_directory, self.pypi_distribution_directory)
+        try:
+            # Use the build library to build the project
+            result = subprocess.run(
+                [sys.executable, '-m', 'build', '--wheel', '--outdir', self.pypi_distribution_directory],
+                cwd=self.project_directory,
+                text=True,
+                capture_output=True
+            )
+            if result.returncode != 0:
+                pt.c("Build failed:", result.stdout, result.stderr)
+                raise Exception(f"Build failed with errors: {result.stderr}")
+            else:
+                pt.c("Build succeeded:", result.stdout)
+        except Exception as e:
+            pt.e("Error during build:", str(e))
+            raise
+
+        # Check for the wheel file in the output directory
         wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
         if wheels:
             self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
@@ -221,26 +251,66 @@ class PipUniversalProjects:
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
+    
+    # def build_wheel(self):
+    #     pt(self.pyproject_file_path, self.pypi_distribution_directory)
+    #     # pt.ex()
+    #     setup_args = ['python', self.pyproject_file_path, 'bdist_wheel', '--dist-dir', self.pypi_distribution_directory]
+    #     # pt()
+    #     subprocess.run(setup_args, cwd=self.project_directory, check=True)
+    #     # pt()
+    #     wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
+    #     if wheels:
+    #         self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
+    #         pt(self.wheel_path)
+    #         return self.wheel_path
+    #     else:
+    #         raise FileNotFoundError("No wheel file created.")
 
     def uninstall_existing_package(self):
+        # pt.ex()
         
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
     def install_package_locally(self):
         # Get the user base binary directory (where the scripts go)
-        user_script_dir = site.USER_BASE + os.sep + 'Scripts'
+        # user_script_dir = site.USER_BASE + os.sep + 'Scripts'
         
         # Add the user script directory to the PATH environment variable
-        os.environ['PATH'] += os.pathsep + user_script_dir
-        pt(user_script_dir, os.pathsep + user_script_dir)
-        print(f"Added {user_script_dir} to PATH")
-        sys.path.append(user_script_dir)
+        # os.environ['PATH'] += os.pathsep + user_script_dir
+        # os.environ['PYTHONPATH'] = os.environ.get('PYTHONPATH', '') + os.pathsep + site.USER_SITE
+        # pt(site.getsitepackages())
+        # print(f"Added {user_script_dir} to PATH and PYTHONPATH")
+        # sys.path.append(user_script_dir)
+        
+        # Explicitly add the directory where the package's scripts are installed
+        # additional_script_dir = 'C:\\Users\\user\\AppData\\Roaming\\Python\\Python311\\Scripts'
+        # os.environ['PATH'] += os.pathsep + additional_script_dir
+        # print(f"Added {additional_script_dir} to PATH")
+        
+        pt(self.wheel_path)
         # pt.ex()
-        # Now run pip install with the --user option
-        subprocess.run([sys.executable, '-m', 'pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
+        subprocess.run(['pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
+        
 
     def test_installed_package(self):
-        # First, attempt to import the package to check if it's accessible to Python
+        ## temp debug
+        user_site = site.getusersitepackages()
+        if user_site not in sys.path:
+            sys.path.append(user_site)
+            print(f"Added {user_site} to sys.path")
+        pt(site.getsitepackages())
+
+
+        ## First, use subprocess to run `pip show` to confirm the package is installed and capture the output
+        result = subprocess.run([sys.executable, '-m', 'pip', 'show', self.package_name], capture_output=True, text=True)
+        if result.returncode == 0 and self.package_name in result.stdout:
+            print(f"'pip show' output confirms the package '{self.package_name}' is installed:\n{result.stdout}")
+        else:
+            print(f"The package '{self.package_name}' does not appear to be installed correctly.")
+            sys.exit(1)
+            
+        ## Second, attempt to import the package to check if it's accessible to Python
         try:
             __import__(self.package_name)
             print(f"Successfully imported the package '{self.package_name}'.")
@@ -248,15 +318,9 @@ class PipUniversalProjects:
             print(f"Failed to import the package '{self.package_name}'. Error: {e}")
             sys.exit(1)
 
-        # Second, use subprocess to run `pip show` to confirm the package is installed and capture the output
-        result = subprocess.run([sys.executable, '-m', 'pip', 'show', self.package_name], capture_output=True, text=True)
-        if result.returncode == 0 and self.package_name in result.stdout:
-            print(f"'pip show' output confirms the package '{self.package_name}' is installed:\n{result.stdout}")
-        else:
-            print(f"The package '{self.package_name}' does not appear to be installed correctly.")
-            sys.exit(1)
 
-        # Third, run a small script to ensure the package can execute its functionality
+
+        ## Third, run a small script to ensure the package can execute its functionality
         with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp:
             temp.write(
                 f'import {self.package_name}\n'
@@ -264,7 +328,7 @@ class PipUniversalProjects:
             )
             temp_file_name = temp.name
         try:
-            result = subprocess.run(["python", temp_file_name], capture_output=True, text=True)
+            result = subprocess.run([sys.executable, temp_file_name], capture_output=True, text=True)
             print(result.stdout)
             if result.returncode != 0:
                 print(f"Error running test script: {result.stderr}")

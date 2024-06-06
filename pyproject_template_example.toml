@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.2"]
+requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,39 +7,8 @@ name = "pup_py"
 version = "0.1.0"
 authors = [{name = "Developer 1v", email = "Developer-1v@proton.me"}]
 license = {text = "MIT License"}
-description = """
-Creates a package from a source and then automatically
-tests the package, uploads to PyPI, and installs to your PC"""
+description = """Creates a package from a source and then automatically tests the package, uploads to PyPI, and installs to your PC"""
 keywords = [
-    "pup_py",
-    "pup",
-    "puppy",
-    "Pip Universal Projects",
-    "automated pip",
-    "pypi publish",
-    "publish pypi",
-    "pypi upload",
-    "upload pypi",
-    "pypi install",
-    "install pypi",
-    "pypi package",
-    "package pypi",
-    "automatic create package",
-    "automated package Creation",
-    "Automated install",
-    "Automated upload",
-    "package publish package",
-    "package upload package",
-    "package install package",
-    "package package package",
-    "pip publish",
-    "publish pip",
-    "pip upload",
-    "upload pip",
-    "pip install",
-    "install pip",
-    "pip package",
-    "package pip",
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -52,18 +21,12 @@ classifiers = [
 ]
 requires-python = ">=3.6"
 dependencies = [
-    "icecream==2.1.3",
-    "matplotlib==3.7.1",
-    "numpy==1.24.2",
-    "Print_Tricks_And_More_Alpha==0.3.179.9929",
-    "pygame==2.5.0",
-    "ursina==6.1.2",
+# "Print_Tricks_And_More_Alpha==0.3.179.9929",
 ]
 
 [project.readme]
-text = """
-Generic Readme for a package
-Generic History for a package"""
+text = "Generic Readme for a package"
+content-type = "text/plain"
 
 [project.urls]
 Homepage = "https://github.com/developer-1v/pup_py"
@@ -72,7 +35,7 @@ Tracker = "https://github.com/developer-1v/pup_py/issues"
 PyPI = "https://pypi.org/project/pup_py/"
 
 [project.scripts]
-pup_py = "pup_py.cli:main"
+# pup_py = "pup_py.cli:main"
 
 [project.optional-dependencies]
 testing = ["pytest>=3"]
@@ -80,6 +43,4 @@ testing = ["pytest>=3"]
 [tool.setuptools]
 zip-safe = false
 include-package-data = true
-
-[tool.setuptools.packages]
-find = {namespaces = false}
+packages = {find = {where = ["."]}}
