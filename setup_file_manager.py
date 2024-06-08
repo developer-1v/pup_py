@@ -76,25 +76,51 @@ class SetupFileManager:
         
         return self.modify_toml_file(new_toml_path)
 
+    # def modify_toml_file(self, toml_path):
+    #     with open(toml_path, 'r') as file:
+    #         template_content = file.read()
+        
+
+    #     escaped_directory = self.distribution_directory.replace("\\", "/")  # Use forward slashes for paths
+    #     modified_content = template_content.replace(
+    #         'name = "pup_py"', f'name = "{self.package_name}"').replace(
+    #         'packages = {find = {where = ["."]}}', 
+    #         f'packages = {{find = {{where = ["{escaped_directory}"]}}}}')
+            
+    #     with open(toml_path, 'w') as file:
+    #         file.write(modified_content)
+        
+    #     return {
+    #         'package_name': self.package_name, 
+    #         'version': self.extract_version(modified_content),
+    #         'username': self.extract_username(modified_content),
+    #         }
+
     def modify_toml_file(self, toml_path):
+        import toml
+
         with open(toml_path, 'r') as file:
             template_content = file.read()
-        
 
         escaped_directory = self.distribution_directory.replace("\\", "/")  # Use forward slashes for paths
         modified_content = template_content.replace(
             'name = "pup_py"', f'name = "{self.package_name}"').replace(
             'packages = {find = {where = ["."]}}', 
             f'packages = {{find = {{where = ["{escaped_directory}"]}}}}')
-            
+
         with open(toml_path, 'w') as file:
             file.write(modified_content)
-        
+
+        # Read the TOML file to get the packages
+        toml_data = toml.load(toml_path)
+        packages = toml_data.get('tool', {}).get('setuptools', {}).get('packages', {})
+        print("Packages found:", packages)
+
         return {
             'package_name': self.package_name, 
             'version': self.extract_version(modified_content),
             'username': self.extract_username(modified_content),
-            }
+        }
 
     def extract_version(self, content):
         # Assuming the version follows a specific pattern in the content

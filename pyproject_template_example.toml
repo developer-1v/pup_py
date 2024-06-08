@@ -43,4 +43,6 @@ testing = ["pytest>=3"]
 [tool.setuptools]
 zip-safe = false
 include-package-data = true
-packages = {find = {where = ["."]}}
+# packages = {find = {where = ["."]}}
+# packages = {find = {where = ["."], include = ["*"]}}
+packages = {find = {where = ["src"]}}

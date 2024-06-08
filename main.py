@@ -46,17 +46,19 @@ sys.path.append(os.path.dirname(__file__))
 @auto_decorate_methods
 class PipUniversalProjects:
     def __init__(self, 
-            project_directory, 
-            destination_directory=None,
-            distribution_subfolder='build_dist',
-            pypi_structure_subfolder='pypi_system',
-            pypi_build_subfolder='build_pypi',
-            pypi_distribution_subfolder='dist_pypi',
-            use_standard_build_directories=False,
-            package_name=None, 
-            use_test_pypi=False,
-            use_gui=False,
-            ):
+        project_directory,
+        destination_directory=None,
+        package_name=None,
+        distribution_subfolder='build_dist',
+        pypi_structure_subfolder='pypi_system',
+        pypi_build_subfolder='build_pypi',
+        pypi_distribution_subfolder='dist_pypi',
+        use_standard_build_directories=False,
+        use_test_pypi=False,
+        test_pypi_token_env_var='TEST_PYPI_TOKEN',
+        pypi_token_env_var='PYPI_TOKEN',
+        use_gui=False,
+        ):
         
         ## Check for Valid Project:
         if not os.path.exists(project_directory):
@@ -67,14 +69,15 @@ class PipUniversalProjects:
         ## Args
         self.project_directory = project_directory
         self.destination_directory = project_directory if destination_directory is None else destination_directory
+        self.package_name = os.path.basename(project_directory) if package_name is None else package_name
         self.distribution_subfolder = distribution_subfolder
         self.pypi_structure_subfolder = pypi_structure_subfolder
         self.pypi_build_subfolder = pypi_build_subfolder
         self.pypi_distribution_subfolder = pypi_distribution_subfolder
         self.use_standard_build_directories = use_standard_build_directories
-        self.package_name = os.path.basename(project_directory) if package_name is None else package_name
-        
         self.use_test_pypi = use_test_pypi
+        self.test_pypi_token_env_var = test_pypi_token_env_var
+        self.pypi_token_env_var = pypi_token_env_var
         self.use_gui = use_gui
         
         self.ui_gui_manager = UiGuiManager(use_gui)
@@ -219,13 +222,17 @@ class PipUniversalProjects:
         import subprocess
         import os
 
-        # Log the contents of the project directory
-        print("Contents of the project directory:")
-        for root, dirs, files in os.walk(self.project_directory):
-            for file in files:
-                print(os.path.join(root, file))
+        ## Debug Log the contents of the project directory
+        # print("Contents of the project directory:")
+        # for root, dirs, files in os.walk(self.project_directory):
+        #     for file in files:
+        #         print(os.path.join(root, file))
 
         pt(self.pyproject_file_path, self.project_directory, self.pypi_distribution_directory)
+        
+        
+        print(f"\nBuilding package: {self.package_name} (will take a while...)")
+        
         try:
             # Use the build library to build the project
             result = subprocess.run(
@@ -243,7 +250,7 @@ class PipUniversalProjects:
             pt.e("Error during build:", str(e))
             raise
 
-        # Check for the wheel file in the output directory
+        ## Check for the wheel file in the output directory
         wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
         if wheels:
             self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
@@ -291,50 +298,49 @@ class PipUniversalProjects:
         pt(self.wheel_path)
         # pt.ex()
         subprocess.run(['pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
-        
 
     def test_installed_package(self):
         ## temp debug
-        user_site = site.getusersitepackages()
-        if user_site not in sys.path:
-            sys.path.append(user_site)
-            print(f"Added {user_site} to sys.path")
-        pt(site.getsitepackages())
-
-
-        ## First, use subprocess to run `pip show` to confirm the package is installed and capture the output
-        result = subprocess.run([sys.executable, '-m', 'pip', 'show', self.package_name], capture_output=True, text=True)
-        if result.returncode == 0 and self.package_name in result.stdout:
-            print(f"'pip show' output confirms the package '{self.package_name}' is installed:\n{result.stdout}")
+        # user_site = site.getusersitepackages()
+        # if user_site not in sys.path:
+        #     sys.path.append(user_site)
+        #     print(f"Added {user_site} to sys.path")
+        # g = site.getsitepackages()
+        # pt(g)
+        
+        ## Test 1: Check if the package is installed using `pip show`
+        result_test_1 = subprocess.run([sys.executable, '-m', 'pip', 'show', self.package_name], capture_output=True, text=True)
+        if result_test_1.returncode == 0 and self.package_name in result_test_1.stdout:
+            print(f"Test 1 Success: The package '{self.package_name}' appears to be installed.")
         else:
-            print(f"The package '{self.package_name}' does not appear to be installed correctly.")
+            print(f"Test 1 Failure: The package '{self.package_name}' is not installed or not found by pip.")
             sys.exit(1)
-            
-        ## Second, attempt to import the package to check if it's accessible to Python
+        
+        ## Test 2: Attempt to import the package to verify it's accessible to Python
         try:
             __import__(self.package_name)
-            print(f"Successfully imported the package '{self.package_name}'.")
+            print(f"Test 2 Success: The package '{self.package_name}' was successfully imported.")
         except ImportError as e:
-            print(f"Failed to import the package '{self.package_name}'. Error: {e}")
+            print(f"Test 2 Failure: Could not import the package '{self.package_name}'. Error: {e}")
             sys.exit(1)
-
-
-
-        ## Third, run a small script to ensure the package can execute its functionality
+        
+        ## Test 3: Execute a small script to ensure the package's basic functionality
         with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp:
             temp.write(
                 f'import {self.package_name}\n'
-                f'print(f"{self.package_name} is installed and can be executed.")\n'.encode('utf-8')
+                f'print("Test 3 Success: The package \'{self.package_name}\' is successfully being executed in a test script.")\n'.encode('utf-8')
             )
             temp_file_name = temp.name
         try:
             result = subprocess.run([sys.executable, temp_file_name], capture_output=True, text=True)
             print(result.stdout)
             if result.returncode != 0:
-                print(f"Error running test script: {result.stderr}")
+                print(f"Test 3 Failure: Error running test script for '{self.package_name}': {result.stderr}")
                 sys.exit(1)
         finally:
             os.remove(temp_file_name)
+            
+        print(f"Details for installed package '{self.package_name}':\n{result_test_1.stdout}")
 
     def uninstall_local_package(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
@@ -343,10 +349,10 @@ class PipUniversalProjects:
         # Determine the correct repository URL and token based on whether you're using Test PyPI or PyPI
         if self.use_test_pypi:
             repository_url = 'https://test.pypi.org/legacy/'
-            token = os.getenv('TEST_PYPI_TOKEN')
+            token = os.getenv(self.test_pypi_token_env_var)
         else:
             repository_url = 'https://upload.pypi.org/legacy/'
-            token = os.getenv('PYPI_TOKEN')
+            token = os.getenv(self.pypi_token_env_var)
 
         # Check if the token is available
         if not token:
@@ -388,7 +394,8 @@ def test():
         base_path, 'clean_and_create_new_projects.py')
     
     ## Clean out old projects and create new ones
-    subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
+    # subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
+    # pt.ex()
     
     ## Dynamically get names of all test projects that start with a capital letter and underscore:
     project_dirs = [name for name in os.listdir(main_projects_path)
