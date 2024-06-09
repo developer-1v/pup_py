@@ -1,4 +1,5 @@
 import requests
+from print_tricks import pt
 
 class PyPIVerifier:
     def __init__(self, package_name):
@@ -23,18 +24,19 @@ class PyPIVerifier:
         return False
 
     def check_package_status(self, owner_username):
+        pt(owner_username)
         available = self.is_package_available()
         if available:
-            return (True, True, "This is a first-time upload for a new package & we can claim the package name.")
+            return (True, True, "This appears to be a first-time upload for a new package & we can claim the package name.")
         else:
             is_owner = self.verify_package_owner(owner_username)
             if is_owner:
                 return (False, True, "This is an update to an existing package that we own.")
             else:
                 return (False, False, "The package name is taken and you are not the owner. Please choose a different package name.")
-
+        
 if __name__ == "__main__":
     verifier = PyPIVerifier("test_package_for_builds")
-    print("Is available:", verifier.is_package_available())
-    print("Is owner:", verifier.verify_package_owner("your_username"))
+    status = verifier.check_package_status("your_username")
+    print("Package status:", status)
 

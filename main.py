@@ -231,7 +231,7 @@ class PipUniversalProjects:
         pt(self.pyproject_file_path, self.project_directory, self.pypi_distribution_directory)
         
         
-        print(f"\nBuilding package: {self.package_name} (will take a while...)")
+        print(f"\nBuilding package: '{self.package_name}' (will take a while...)")
         
         try:
             # Use the build library to build the project
@@ -346,7 +346,6 @@ class PipUniversalProjects:
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
     def upload_package_to_pypi(self):
-        # Determine the correct repository URL and token based on whether you're using Test PyPI or PyPI
         if self.use_test_pypi:
             repository_url = 'https://test.pypi.org/legacy/'
             token = os.getenv(self.test_pypi_token_env_var)
@@ -354,13 +353,26 @@ class PipUniversalProjects:
             repository_url = 'https://upload.pypi.org/legacy/'
             token = os.getenv(self.pypi_token_env_var)
 
-        # Check if the token is available
+        ## Check if the token is available
         if not token:
-            raise Exception(f"{'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.")
+            error_message = f"""
+Error: {'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.
 
+To obtain and set a PyPI token:
+1. Visit the PyPI token management page: https://pypi.org/help/#apitoken
+2. Follow the instructions to generate a new token.
+3. Set the token as an environment variable on your system:
+    - Windows: https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+    - macOS/Linux: https://developer.apple.com/documentation/xcode/defining-environment-variables-for-mac-apps
+
+For a visual guide on generating and setting PyPI tokens, watch this YouTube tutorial: https://youtu.be/WGsMydFFPMk?t=104 (Should start at 1:44 and last for 2 minutes to 3:45)
+            """
+            print(error_message)
+            sys.exit(1)
+        
         pt.c(f'Uploading Package to {"Test PyPI" if self.use_test_pypi else "PyPI"} using token authentication')
 
-        # Setup Twine settings with the token
+        ## Setup Twine settings with the token
         settings = Settings(
             repository_url=repository_url,
             username="__token__",
@@ -414,6 +426,7 @@ def test():
             project_directory=os.path.join(main_projects_path, project_dir),
             use_standard_build_directories=True,
             use_test_pypi=True,
+            # test_pypi_token_env_var='NON-EXISTANT_PYPI_TOKEN_FOR_TESTING',
             )
 
 if __name__ == '__main__':
