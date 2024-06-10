@@ -85,6 +85,22 @@ class PipUniversalProjects:
         ## Execute
         self._execute_full_workflow()
 
+    def _prompt_for_input(self, prompt_message, input_type='text'):
+        """
+        Generic method to prompt user for input. Adapts to GUI or CLI based on configuration.
+        """
+        if self.use_gui:
+            ## GUI placeholder
+            import tkinter as tk
+            from tkinter import simpledialog
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            user_input = simpledialog.askstring("Input", prompt_message)
+            return user_input
+        else:
+            ## CLI input
+            return input(prompt_message)
+
     def _execute_full_workflow(self):
         self.user_options()
         self.create_directories()
@@ -202,46 +218,29 @@ class PipUniversalProjects:
         self.version = self.pyproject_data['version']
         # pt.ex()
 
-    def prompt_for_input(self, prompt_message, input_type='text'):
-        """
-        Generic method to prompt user for input. Adapts to GUI or CLI based on configuration.
-        """
-        if self.use_gui:
-            ## GUI placeholder
-            import tkinter as tk
-            from tkinter import simpledialog
-            root = tk.Tk()
-            root.withdraw()  # Hide the main window
-            user_input = simpledialog.askstring("Input", prompt_message)
-            return user_input
-        else:
-            ## CLI input
-            return input(prompt_message)
-
     def verify_package_availability_status(self):
-        verifier = PyPIVerifier(self.package_name, self.username, self.version)
+        verifier = PyPIVerifier(self.package_name, self.username, self.version, self.use_test_pypi)
         self.is_new_package, self.is_our_package, is_version_available, message = verifier.check_package_status()
         print(message)
 
         if not self.is_our_package:
-            choice = self.prompt_for_input("Package name might be taken or username might be incorrect. Choose an option:\n1. Change package name\n2. Change username\nEnter choice (1 or 2):", input_type='choice')
+            choice = self._prompt_for_input("Package name might be taken or username might be incorrect. Choose an option:\n1. Change package name\n2. Change username\nEnter choice (1 or 2):", input_type='choice')
             if choice == '1':
-                new_package_name = self.prompt_for_input("Enter a new package name:")
+                new_package_name = self._prompt_for_input("Enter a new package name:")
                 if new_package_name:
                     self.package_name = new_package_name
                     self.verify_package_availability_status()
             elif choice == '2':
-                new_username = self.prompt_for_input("Enter a new username:")
+                new_username = self._prompt_for_input("Enter a new username:")
                 if new_username:
                     self.username = new_username
                     self.verify_package_availability_status()
 
         if not is_version_available:
-            new_version = self.prompt_for_input("Enter a new version number:")
+            new_version = self._prompt_for_input("Enter a new version number:")
             if new_version:
                 self.version = new_version
                 self.verify_package_availability_status()
-
 
     def fix_and_optimize_package(self):
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)

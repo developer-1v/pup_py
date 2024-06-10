@@ -2,11 +2,12 @@ import requests
 from print_tricks import pt
 
 class PyPIVerifier:
-    def __init__(self, package_name, version, owner_username):
+    def __init__(self, package_name, version, owner_username, use_test_pypi=False):
         self.package_name = package_name
         self.version = version
         self.owner_username = owner_username
-        self.api_url = f"https://pypi.org/pypi/{package_name}/json"
+        base_url = "https://test.pypi.org/pypi" if use_test_pypi else "https://pypi.org/pypi"
+        self.api_url = f"{base_url}/{package_name}/json"
         self.pypi_owners = []  # New attribute to store the list of maintainers
 
     def verify_package_owner(self):
@@ -88,7 +89,8 @@ if __name__ == "__main__":
     verifier = PyPIVerifier(
         "test_package_for_builds", 
         "1.0.0", 
-        "your_username"
+        "your_username",
+        use_test_pypi=False
         )
     status = verifier.check_package_status(
         debug=True
