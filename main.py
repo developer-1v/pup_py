@@ -207,7 +207,7 @@ class PipUniversalProjects:
         Generic method to prompt user for input. Adapts to GUI or CLI based on configuration.
         """
         if self.use_gui:
-            # Implement GUI input (e.g., using tkinter or another library)
+            ## GUI placeholder
             import tkinter as tk
             from tkinter import simpledialog
             root = tk.Tk()
@@ -215,13 +215,13 @@ class PipUniversalProjects:
             user_input = simpledialog.askstring("Input", prompt_message)
             return user_input
         else:
-            # CLI input
+            ## CLI input
             return input(prompt_message)
 
     def verify_package_availability_status(self):
         verifier = PyPIVerifier(self.package_name, self.username, self.version)
         self.is_new_package, self.is_our_package, is_version_available, message = verifier.check_package_status()
-        pt(message)
+        print(message)
 
         if not self.is_our_package:
             choice = self.prompt_for_input("Package name might be taken or username might be incorrect. Choose an option:\n1. Change package name\n2. Change username\nEnter choice (1 or 2):", input_type='choice')
