@@ -24,9 +24,7 @@
 
 '''
 
-import subprocess, os, sys, time, glob, tempfile, pkg_resources, site, difflib
-import shutil, re
-import site
+import subprocess, os, sys, tempfile, shutil, re
 from build.__main__ import build_package
 
 from twine.commands.upload import upload as twine_upload
@@ -93,7 +91,7 @@ class PipUniversalProjects:
         self.check_or_gen_requirements()
         self.setup_file_data()
         # pt.ex()
-        self.verify_package_name_availability()
+        self.verify_package_availability_status()
         self.fix_and_optimize_package()
         self.build_wheel()
         self.uninstall_existing_package()
@@ -195,32 +193,61 @@ class PipUniversalProjects:
             self.project_directory, 
             self.distribution_directory,
             self.package_name,
-            
-            
             )
         self.pyproject_data, self.pyproject_file_path = self.setup_file_manager.get_setup_file_data()
+        pt(self.pyproject_data)
+        
+        self.username = self.pyproject_data['username']
+        self.package_name = self.pyproject_data['package_name']
+        self.version = self.pyproject_data['version']
+        # pt.ex()
 
-    def verify_package_name_availability(self):
-        self.user_name = self.pyproject_data['username']
-        
-        verifier = PyPIVerifier(self.package_name)
-        self.is_new_package, self.is_our_package, message = verifier.check_package_status(self.user_name)
-        
+    def prompt_for_input(self, prompt_message, input_type='text'):
+        """
+        Generic method to prompt user for input. Adapts to GUI or CLI based on configuration.
+        """
+        if self.use_gui:
+            # Implement GUI input (e.g., using tkinter or another library)
+            import tkinter as tk
+            from tkinter import simpledialog
+            root = tk.Tk()
+            root.withdraw()  # Hide the main window
+            user_input = simpledialog.askstring("Input", prompt_message)
+            return user_input
+        else:
+            # CLI input
+            return input(prompt_message)
+
+    def verify_package_availability_status(self):
+        verifier = PyPIVerifier(self.package_name, self.username, self.version)
+        self.is_new_package, self.is_our_package, is_version_available, message = verifier.check_package_status()
         pt(message)
-        
+
         if not self.is_our_package:
-            new_package_name = self.user_manager.prompt_for_username()
-            if new_package_name:
-                self.package_name = new_package_name
-                self.verify_package_name_availability()  ## Re-verify with new name
+            choice = self.prompt_for_input("Package name might be taken or username might be incorrect. Choose an option:\n1. Change package name\n2. Change username\nEnter choice (1 or 2):", input_type='choice')
+            if choice == '1':
+                new_package_name = self.prompt_for_input("Enter a new package name:")
+                if new_package_name:
+                    self.package_name = new_package_name
+                    self.verify_package_availability_status()
+            elif choice == '2':
+                new_username = self.prompt_for_input("Enter a new username:")
+                if new_username:
+                    self.username = new_username
+                    self.verify_package_availability_status()
+
+        if not is_version_available:
+            new_version = self.prompt_for_input("Enter a new version number:")
+            if new_version:
+                self.version = new_version
+                self.verify_package_availability_status()
+
 
     def fix_and_optimize_package(self):
-        
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
     def build_wheel(self):
-        import subprocess
-        import os
+        pt.ex()
 
         ## Debug Log the contents of the project directory
         # print("Contents of the project directory:")
@@ -275,12 +302,11 @@ class PipUniversalProjects:
     #         raise FileNotFoundError("No wheel file created.")
 
     def uninstall_existing_package(self):
-        # pt.ex()
-        
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
     def install_package_locally(self):
         # Get the user base binary directory (where the scripts go)
+        # import site ## For debugging purposes
         # user_script_dir = site.USER_BASE + os.sep + 'Scripts'
         
         # Add the user script directory to the PATH environment variable
