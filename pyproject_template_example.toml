@@ -23,6 +23,7 @@ requires-python = ">=3.6"
 dependencies = [
 # "Print_Tricks_And_More_Alpha==0.3.179.9929",
 ]
+# url = "https://github.com/developer-1v/pup_py"  # Explicitly set the URL here
 
 [project.readme]
 text = "Generic Readme for a package"
@@ -43,10 +44,17 @@ testing = ["pytest>=3"]
 [tool.setuptools]
 zip-safe = false
 include-package-data = true
+packages = { find = { where = [".."], include = ["A_with_nothing"] } }
+
+
+
+
+
+
+
 # packages = ['A_with_nothing']
 # packages = { find = { where = ["."] } }
 # packages = { find = { where = ["../A_with_nothing"] } }
-packages = { find = { where = [".."], include = ["A_with_nothing"] } }
 # packages = ["C:/.PythonProjects/SavedTests/_test_projects_for_building_packages/projects/A_with_nothing"]
 # packages = { find = { where = ["C:/.PythonProjects/SavedTests/_test_projects_for_building_packages/projects/A_with_nothing/"], include = ["*"] } }
 # packages = { find = { where = ["C:\\.PythonProjects\\SavedTests\\_test_projects_for_building_packages\\projects"], include = ["A_with_nothing"] } }
