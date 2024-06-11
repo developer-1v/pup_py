@@ -93,7 +93,7 @@ class SetupFileManager:
         # Modify the content of the TOML file
         modified_content = template_content.replace(
             'name = "pup_py"', f'name = "{self.package_name}"').replace(
-            'packages = ["."]', 
+            'packages = ["."]ppp', ## TODO TODO TODO FIX THIS!!!
             f'packages = {{find = {{where = ["{base_path}/"], include = ["{target_directory}/*"]}}}}')
 
         with open(toml_path, 'w') as file:

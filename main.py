@@ -212,56 +212,115 @@ class PipUniversalProjects:
     def fix_and_optimize_package(self):
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
+
     def build_wheel(self):
-        # pt.ex()
+        import sys
+        import subprocess
 
-        ## Debug Log the contents of the project directory
-        # print("Contents of the project directory:")
-        # for root, dirs, files in os.walk(self.project_directory):
-        #     for file in files:
-        #         print(os.path.join(root, file))
-        original_cwd = os.getcwd()
-        pt(original_cwd)
-        
-        pt(self.pyproject_file_path, self.project_directory, self.pypi_distribution_directory)
-        
-        
-        print(f"\nBuilding package: '{self.package_name}' (will take a while...)")
-        
+        os.chdir(self.project_directory)
+        print("Current working directory:", os.getcwd())
+        print("self.project_directory (repr):", repr(self.project_directory))
+        print("Does self.project_directory exist?", os.path.exists(self.project_directory))
+
+        # Building the wheel
         try:
-            ## Change the current working directory to the project directory
-            os.chdir(self.project_directory)
-            pt(os.getcwd())
-
-            ## Use "build" library
+            # Using the build module to build the package
             result = subprocess.run(
-                [
-                    sys.executable, '-m', 'build', '--wheel', '--outdir', 
-                    self.pypi_distribution_directory],
-                cwd=self.project_directory,
-                text=True,
-                capture_output=True
+                [sys.executable, '-m', 'build', '--wheel', '--outdir', self.pypi_distribution_directory],
+                check=True,
+                capture_output=True,
+                text=True
             )
-            if result.returncode != 0:
-                pt.c("Build failed:", result.stdout, result.stderr)
-                raise Exception(f"Build failed with errors: {result.stderr}")
-            else:
-                pt.c("Build succeeded:", result.stdout)
-        except Exception as e:
-            pt.e("Error during build:", str(e))
+            print("Build output:", result.stdout)
+        except subprocess.CalledProcessError as e:
+            print("Error during build:", e.stderr)
             raise
-        finally:
-            ## Restore the original working directory
-            os.chdir(original_cwd)
-            
-        ## Check for the wheel file in the output directory
+
+        # Check for the wheel file in the output directory
         wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
         if wheels:
             self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
-            pt(self.wheel_path)
-            return self.wheel_path
+            print("Wheel built successfully:", self.wheel_path)
         else:
             raise FileNotFoundError("No wheel file created.")
+
+
+    # def build_wheel(self):
+    #     # pt.ex()
+
+    #     ## Debug Log the contents of the project directory
+    #     # print("Contents of the project directory:")
+    #     # for root, dirs, files in os.walk(self.project_directory):
+    #     #     for file in files:
+    #     #         print(os.path.join(root, file))
+    #     original_cwd = os.getcwd()
+    #     pt(original_cwd)
+        
+    #     pt(self.pyproject_file_path, self.project_directory, self.pypi_distribution_directory)
+        
+        
+
+        
+        
+
+
+    #     print("Current working directory:", os.getcwd())
+    #     print("Contents of the project directory:")
+    #     for root, dirs, files in os.walk(self.project_directory):
+    #         for file in files:
+    #             print(os.path.join(root, file))
+
+    #     # Existing code continues...
+    #     original_cwd = os.getcwd()
+    #     pt(original_cwd)
+        
+    #     print(f"\nBuilding package: '{self.package_name}' (will take a while...)")
+    #     normalized_project_dir = os.path.normpath(self.project_directory)
+    #     print("Normalized project directory:", normalized_project_dir)
+
+    #     # Existing code to change directory and build...
+    #     os.chdir(normalized_project_dir)
+    #     print("Changed directory to:", os.getcwd())
+        
+    #     try:
+    #         ## Change the current working directory to the project directory
+    #         # os.chdir(self.project_directory)
+    #         # pt(os.getcwd())
+            
+            
+
+    #             ## Use "build" library
+    #         result = subprocess.run(
+    #             [
+    #                 sys.executable, '-m', 'build', '--wheel', '--outdir', 
+    #                     self.pypi_distribution_directory,
+    #                 ],
+    #                 cwd=self.project_directory,
+    #                 text=True,
+    #                 capture_output=True
+    #                 )
+    #         print("STDOUT:", result.stdout)
+    #         print("STDERR:", result.stderr)
+    #         if result.returncode != 0:
+    #             pt.c("Build failed:", result.stdout, result.stderr)
+    #             raise Exception(f"Build failed with errors: {result.stderr}")
+    #         else:
+    #             pt.c("Build succeeded:", result.stdout)
+    #     except Exception as e:
+    #         pt.e("Error during build:", str(e))
+    #         raise
+    #     finally:
+    #         ## Restore the original working directory
+    #         os.chdir(original_cwd)
+            
+    #     ## Check for the wheel file in the output directory
+    #     wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
+    #     if wheels:
+    #         self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
+    #         pt(self.wheel_path)
+    #         return self.wheel_path
+    #     else:
+    #         raise FileNotFoundError("No wheel file created.")
 
     def uninstall_package(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
