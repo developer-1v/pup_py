@@ -85,21 +85,20 @@ class PipUniversalProjects:
         ## Execute
         self._execute_full_workflow()
 
-
-
     def _execute_full_workflow(self):
         self.user_options()
         self.create_directories()
         self.check_or_gen_requirements()
         self.setup_file_data()
-        # pt.ex()
         self.verify_package_availability_status()
         self.fix_and_optimize_package()
+        # pt.ex()
         self.build_wheel()
-        self.uninstall_existing_package()
+        self.uninstall_package()
         self.install_package_locally()
         self.test_installed_package() ## Test Local Wheel Package
-        self.uninstall_local_package()
+        pt.ex()
+        self.uninstall_package()
         self.upload_package_to_pypi()
         self.install_package_from_pypi()
         self.test_installed_package() ## Test Pypi intalled Package
@@ -110,10 +109,10 @@ class PipUniversalProjects:
             'fix_and_optimize': True, 
             'create_init_files': True, 
             'build_wheel': True, 
-            'uninstall_existing_package': True, 
+            'uninstall_package': True, 
             'install_package_locally': True, 
             'test_installed_package': True, 
-            'uninstall_local_package': True, 
+            'uninstall_package': True, 
             'upload_package_to_pypi': True, 
             'install_package_from_pypi': True,
             'excluded_folders': [''],
@@ -184,10 +183,10 @@ class PipUniversalProjects:
                     '--savepath', req_path_in_distribution_directory
                     ],
                 check=True)
-            pt.c('-- Finished Creating requirements.txt in build_dist_dir')
+            pt.c(f'-- Finished Creating requirements.txt in {self.distribution_directory}')
         except Exception as e:
-                pt.e()
-                pt.ex(e)
+            pt.e()
+            pt.ex(e)
 
     def setup_file_data(self):
         
@@ -200,6 +199,7 @@ class PipUniversalProjects:
         pt(self.pyproject_data)
         
         self.username = self.pyproject_data['username']
+        # pt(self.username)
         self.package_name = self.pyproject_data['package_name']
         self.version = self.pyproject_data['version']
         # pt.ex()
@@ -207,28 +207,37 @@ class PipUniversalProjects:
     def verify_package_availability_status(self):
         verifier = PyPIVerifier(self.package_name, self.username, self.version, self.use_test_pypi)
         self.package_name, self.username, self.version = verifier.handle_verification()
+        # pt(self.username)
 
     def fix_and_optimize_package(self):
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
     def build_wheel(self):
-        pt.ex()
+        # pt.ex()
 
         ## Debug Log the contents of the project directory
         # print("Contents of the project directory:")
         # for root, dirs, files in os.walk(self.project_directory):
         #     for file in files:
         #         print(os.path.join(root, file))
-
+        original_cwd = os.getcwd()
+        pt(original_cwd)
+        
         pt(self.pyproject_file_path, self.project_directory, self.pypi_distribution_directory)
         
         
         print(f"\nBuilding package: '{self.package_name}' (will take a while...)")
         
         try:
-            # Use the build library to build the project
+            ## Change the current working directory to the project directory
+            os.chdir(self.project_directory)
+            pt(os.getcwd())
+
+            ## Use "build" library
             result = subprocess.run(
-                [sys.executable, '-m', 'build', '--wheel', '--outdir', self.pypi_distribution_directory],
+                [
+                    sys.executable, '-m', 'build', '--wheel', '--outdir', 
+                    self.pypi_distribution_directory],
                 cwd=self.project_directory,
                 text=True,
                 capture_output=True
@@ -241,7 +250,10 @@ class PipUniversalProjects:
         except Exception as e:
             pt.e("Error during build:", str(e))
             raise
-
+        finally:
+            ## Restore the original working directory
+            os.chdir(original_cwd)
+            
         ## Check for the wheel file in the output directory
         wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
         if wheels:
@@ -250,23 +262,8 @@ class PipUniversalProjects:
             return self.wheel_path
         else:
             raise FileNotFoundError("No wheel file created.")
-    
-    # def build_wheel(self):
-    #     pt(self.pyproject_file_path, self.pypi_distribution_directory)
-    #     # pt.ex()
-    #     setup_args = ['python', self.pyproject_file_path, 'bdist_wheel', '--dist-dir', self.pypi_distribution_directory]
-    #     # pt()
-    #     subprocess.run(setup_args, cwd=self.project_directory, check=True)
-    #     # pt()
-    #     wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
-    #     if wheels:
-    #         self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
-    #         pt(self.wheel_path)
-    #         return self.wheel_path
-    #     else:
-    #         raise FileNotFoundError("No wheel file created.")
 
-    def uninstall_existing_package(self):
+    def uninstall_package(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
     def install_package_locally(self):
@@ -288,7 +285,10 @@ class PipUniversalProjects:
         
         pt(self.wheel_path)
         # pt.ex()
-        subprocess.run(['pip', 'install', self.wheel_path, '--force-reinstall', '--user'], check=True)
+        subprocess.run(['pip', 'install', self.wheel_path, 
+                        '--force-reinstall', 
+                        '--user', 
+                        '--no-cache-dir'], check=True)
 
     def test_installed_package(self):
         ## temp debug
@@ -332,9 +332,6 @@ class PipUniversalProjects:
             os.remove(temp_file_name)
             
         print(f"Details for installed package '{self.package_name}':\n{result_test_1.stdout}")
-
-    def uninstall_local_package(self):
-        subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
     def upload_package_to_pypi(self):
         if self.use_test_pypi:

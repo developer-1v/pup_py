@@ -42,8 +42,6 @@ class SetupFileManager:
             print("No setup.py or main.py found. Created new pyproject.toml from template.")
             return data, search_toml_in_dist_dir  # Return the path to pyproject.toml
 
-    # Other methods remain unchanged
-
     def parse_setup_file(self, file_path):
         with open(file_path, 'r') as file:
             content = file.read()
@@ -76,37 +74,27 @@ class SetupFileManager:
         
         return self.modify_toml_file(new_toml_path)
 
-    # def modify_toml_file(self, toml_path):
-    #     with open(toml_path, 'r') as file:
-    #         template_content = file.read()
-        
-
-    #     escaped_directory = self.distribution_directory.replace("\\", "/")  # Use forward slashes for paths
-    #     modified_content = template_content.replace(
-    #         'name = "pup_py"', f'name = "{self.package_name}"').replace(
-    #         'packages = {find = {where = ["."]}}', 
-    #         f'packages = {{find = {{where = ["{escaped_directory}"]}}}}')
-            
-    #     with open(toml_path, 'w') as file:
-    #         file.write(modified_content)
-        
-    #     return {
-    #         'package_name': self.package_name, 
-    #         'version': self.extract_version(modified_content),
-    #         'username': self.extract_username(modified_content),
-    #         }
-
     def modify_toml_file(self, toml_path):
         import toml
+        import os
 
         with open(toml_path, 'r') as file:
             template_content = file.read()
 
-        escaped_directory = self.distribution_directory.replace("\\", "/")  # Use forward slashes for paths
+        # Get the parent directory of the current distribution directory
+        parent_directory = os.path.dirname(self.distribution_directory)
+        escaped_parent_directory = parent_directory.replace("\\", "/")  # Use forward slashes for paths
+
+        # Split the escaped parent directory to separate the base path and the target directory
+        path_parts = escaped_parent_directory.split('/')
+        base_path = '/'.join(path_parts[:-1])  # Everything except the last part
+        target_directory = path_parts[-1]  # The last part of the path
+
+        # Modify the content of the TOML file
         modified_content = template_content.replace(
             'name = "pup_py"', f'name = "{self.package_name}"').replace(
-            'packages = {find = {where = ["."]}}', 
-            f'packages = {{find = {{where = ["{escaped_directory}"]}}}}')
+            'packages = ["."]', 
+            f'packages = {{find = {{where = ["{base_path}/"], include = ["{target_directory}/*"]}}}}')
 
         with open(toml_path, 'w') as file:
             file.write(modified_content)
@@ -121,6 +109,32 @@ class SetupFileManager:
             'version': self.extract_version(modified_content),
             'username': self.extract_username(modified_content),
         }
+    
+    # def modify_toml_file(self, toml_path):
+    #     import toml
+
+    #     with open(toml_path, 'r') as file:
+    #         template_content = file.read()
+
+    #     escaped_directory = self.distribution_directory.replace("\\", "/")  # Use forward slashes for paths
+    #     modified_content = template_content.replace(
+    #         'name = "pup_py"', f'name = "{self.package_name}"').replace(
+    #         'packages = {find = {where = ["."]}}', 
+    #         f'packages = {{find = {{where = ["{escaped_directory}"]}}}}')
+
+    #     with open(toml_path, 'w') as file:
+    #         file.write(modified_content)
+
+    #     # Read the TOML file to get the packages
+    #     toml_data = toml.load(toml_path)
+    #     packages = toml_data.get('tool', {}).get('setuptools', {}).get('packages', {})
+    #     print("Packages found:", packages)
+
+    #     return {
+    #         'package_name': self.package_name, 
+    #         'version': self.extract_version(modified_content),
+    #         'username': self.extract_username(modified_content),
+    #     }
 
     def extract_version(self, content):
         # Assuming the version follows a specific pattern in the content
@@ -135,8 +149,39 @@ class SetupFileManager:
         authors_line = re.search(r'authors = \["([^"]+)"\]', content)
         if authors_line:
             return authors_line.group(1)
-        return 'Developer-1v'
+        return None
 
+
+if __name__ == '__main__':
+
+    base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects'
+    os.makedirs(base_path, exist_ok=True)
+    
+    ## Dynamically get names of all test projects that start with a capital letter and underscore:
+    project_directories = [name for name in os.listdir(base_path)
+                    if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
+
+    ## TODO DELETE: temporary testing of individual projects
+    project_directories = ['A_with_nothing',
+                    ]
+    
+    
+    for project_directory in project_directories:    
+        setup_file_manager = SetupFileManager(
+            project_directory=os.path.join(base_path, project_directory),
+            distribution_directory=os.path.join(base_path, project_directory, 'build_dist'),
+            package_name=project_directory,
+        )
+        setup_data = setup_file_manager.get_setup_file_data()
+        pt(setup_data)
+
+
+
+
+
+'''
+
+old:
     # def create_setup_from_template(self):
     #     this_dir = os.path.dirname(__file__)
     #     template_path = os.path.join(this_dir, 'setup_template_example.py')
@@ -163,26 +208,4 @@ class SetupFileManager:
     #         return {'package_name': 'example_package', 'version': '0.1.0'}
 
 
-if __name__ == '__main__':
-
-    base_path = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects'
-    os.makedirs(base_path, exist_ok=True)
-    
-    ## Dynamically get names of all test projects that start with a capital letter and underscore:
-    project_directories = [name for name in os.listdir(base_path)
-                    if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
-
-    ## TODO DELETE: temporary testing of individual projects
-    project_directories = ['A_with_nothing',
-                    ]
-    
-    
-    for project_directory in project_directories:    
-        setup_file_manager = SetupFileManager(
-            project_directory=os.path.join(base_path, project_directory),
-            distribution_directory=os.path.join(base_path, project_directory, 'build_dist'),
-            package_name=project_directory,
-        )
-        setup_data = setup_file_manager.get_setup_file_data()
-        pt(setup_data)
-
+'''

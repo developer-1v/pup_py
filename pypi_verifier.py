@@ -2,11 +2,20 @@ import requests
 from print_tricks import pt
 
 class PyPIVerifier:
-    def __init__(self, package_name, version, owner_username, use_test_pypi=False):
+    def __init__(self, 
+            package_name, 
+            username, 
+            version, 
+            use_test_pypi=False, 
+            use_gui=False
+            ):
         self.package_name = package_name
         self.version = version
-        self.owner_username = owner_username
+        self.version = version
+        self.username = username
+        # pt(self.username)
         base_url = "https://test.pypi.org/pypi" if use_test_pypi else "https://pypi.org/pypi"
+        self.use_gui = use_gui
         self.api_url = f"{base_url}/{package_name}/json"
         self.pypi_owners = []  # New attribute to store the list of maintainers
 
@@ -14,8 +23,12 @@ class PyPIVerifier:
         response = requests.get(self.api_url)
         if response.status_code == 200:
             data = response.json()
-            self.pypi_owners = [maintainer['username'] for maintainer in data['info']['maintainers']]
-            return self.owner_username in self.pypi_owners
+            pt(data)
+            # pt.ex()
+            # Safely access the 'maintainers' key using get() to avoid KeyError
+            maintainers = data['info'].get('maintainers', [])
+            self.pypi_owners = [maintainer['username'] for maintainer in maintainers]
+            return self.username in self.pypi_owners
         return False
 
     def prompt_for_input(self, prompt_message, input_type='text'):
@@ -48,7 +61,8 @@ class PyPIVerifier:
             elif choice == '2':
                 new_username = self.prompt_for_input("Enter a new username:")
                 if new_username:
-                    self.owner_username = new_username
+                    self.username = new_username
+                    # pt(self.username)
                     return self.handle_verification()
 
         if not is_version_available:
@@ -57,7 +71,7 @@ class PyPIVerifier:
                 self.version = new_version
                 return self.handle_verification()
 
-        return self.package_name, self.owner_username, self.version
+        return self.package_name, self.username, self.version
 
     def check_package_status(self, debug=False):
         is_new_package = self.verify_new_package()
@@ -80,7 +94,8 @@ class PyPIVerifier:
             else:
                 message = f"This is an update to an existing package '{self.package_name}' that we own, but the version '{self.version}' already exists. Please type in a different version number directly here: (or exit this, and change it in your setup/pyproject file)"
         else:
-            message = f"The package name '{self.package_name}' is taken and you, '{self.owner_username}', are not the owner. The owner is '{self.pypi_owners[0]}'. Please choose a different package name here: (or exit this, and change it in your setup/pyproject file)"
+            owner_info = f"The owner is '{self.pypi_owners[0]}'" if self.pypi_owners else "No owner information available"
+            message = f"The package name '{self.package_name}' is taken and you, '{self.username}', are not the owner. {owner_info}. Please choose a different package name here: (or exit this, and change it in your setup/pyproject file)"
 
         return is_new_package, is_our_package, is_version_available, message
 
