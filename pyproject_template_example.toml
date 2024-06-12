@@ -1,13 +1,15 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+## I want to use setuptools 'build' backend
+requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "pup_py"
 version = "0.1.0"
-authors = [{name = "developer-1v", email = "Developer-1v@proton.me"}]
+# authors = [{name = "developer-1v", email = "Developer-1v@proton.me"}] ## NOTE: I original had this, which is supposed to be correct, but it won't work with current setuptools 
+authors = [{name = "developer-1v"}, {email = "Developer-1v@proton.me"}]
 license = {text = "MIT License"}
-description = """Creates a package from a source and then automatically tests the package, uploads to PyPI, and installs to your PC"""
+description = """ Homepage: https://github.com/developer-1v/pup_py\n\nCreates a package from a source and then automatically tests the package, uploads to PyPI, and installs to your PC"""
 keywords = [
 ]
 classifiers = [
@@ -23,7 +25,6 @@ requires-python = ">=3.6"
 dependencies = [
 # "Print_Tricks_And_More_Alpha==0.3.179.9929",
 ]
-# url = "https://github.com/developer-1v/pup_py"  # Explicitly set the URL here
 
 [project.readme]
 text = "Generic Readme for a package"
@@ -45,7 +46,7 @@ testing = ["pytest>=3"]
 zip-safe = false
 include-package-data = true
 packages = { find = { where = [".."], include = ["A_with_nothing"] } }
-
+# packages = { find = { where = ["."] } }
 
 
 

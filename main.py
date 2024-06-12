@@ -91,13 +91,13 @@ class PipUniversalProjects:
         self.check_or_gen_requirements()
         self.setup_file_data()
         self.verify_package_availability_status()
-        self.fix_and_optimize_package()
         # pt.ex()
+        self.fix_and_optimize_package()
         self.build_wheel()
         self.uninstall_package()
         self.install_package_locally()
         self.test_installed_package() ## Test Local Wheel Package
-        pt.ex()
+        # pt.ex()
         self.uninstall_package()
         self.upload_package_to_pypi()
         self.install_package_from_pypi()
@@ -212,6 +212,46 @@ class PipUniversalProjects:
     def fix_and_optimize_package(self):
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
+    # def build_wheel_HATCH_VERSION_FAILING(self):
+    #     ## Debug Log the contents of the project directory
+    #     # print("Contents of the project directory:")
+    #     # for root, dirs, files in os.walk(self.project_directory):
+    #     #     for file in files:
+    #     #         print(os.path.join(root, file))
+        
+        
+    #     original_cwd = os.getcwd()
+    #     try:
+    #         os.chdir(self.project_directory)
+    #         print("Current working directory:", os.getcwd())
+    #         target_directory = os.path.abspath(self.pypi_distribution_directory)
+    #         print(f"Target directory for build: {repr(target_directory)}")
+
+    #         try:
+    #             result = subprocess.run(
+    #                 ## [sys.executable, '-m', 'hatchling', 'build', '--target', target_directory],
+    #                 [sys.executable, '-m', 'hatchling', 'build'],
+    #                 check=True,
+    #                 capture_output=True,
+    #                 text=True,
+    #                 cwd=self.project_directory,
+    #             )
+    #             print('1', result.stdout)
+    #             print('2', result.stderr)
+    #         except subprocess.CalledProcessError as e:
+    #             print(f"Error during build with Hatch: {e}")
+    #             print('3', e.stdout)
+    #             print('4', e.stderr)
+
+    #         wheels = [f for f in os.listdir(target_directory) if f.endswith('.whl')]
+            
+    #         if wheels:
+    #             self.wheel_path = os.path.join(target_directory, wheels[0])
+    #             print("Wheel built successfully with Hatch:", self.wheel_path)
+    #         else:
+    #             raise FileNotFoundError("No wheel file created with Hatch.")
+    #     finally:
+    #         os.chdir(original_cwd)
 
     def build_wheel(self):
         ## Debug Log the contents of the project directory

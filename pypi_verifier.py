@@ -19,18 +19,6 @@ class PyPIVerifier:
         self.api_url = f"{base_url}/{package_name}/json"
         self.pypi_owners = []  # New attribute to store the list of maintainers
 
-    def verify_package_owner(self):
-        response = requests.get(self.api_url)
-        if response.status_code == 200:
-            data = response.json()
-            pt(data)
-            # pt.ex()
-            # Safely access the 'maintainers' key using get() to avoid KeyError
-            maintainers = data['info'].get('maintainers', [])
-            self.pypi_owners = [maintainer['username'] for maintainer in maintainers]
-            return self.username in self.pypi_owners
-        return False
-
     def prompt_for_input(self, prompt_message, input_type='text'):
         """
         Generic method to prompt user for input. Adapts to GUI or CLI based on configuration.
@@ -73,7 +61,7 @@ class PyPIVerifier:
 
         return self.package_name, self.username, self.version
 
-    def check_package_status(self, debug=False):
+    def check_package_status(self, debug=True):
         is_new_package = self.verify_new_package()
         if is_new_package:
             is_our_package = True
@@ -83,8 +71,13 @@ class PyPIVerifier:
             is_version_available = self.verify_version_available() if is_our_package else False
 
         if debug:
-            print(f"Debug Info: Package Available: {is_new_package}, Is Owner: {is_our_package}, Version Available: {is_version_available}")
-            print(f"PyPI Owners: {self.pypi_owners}")  # Print the list of maintainers
+            pt(is_new_package, 
+                is_our_package, 
+                self.username, 
+                self.pypi_owners, 
+                is_version_available, 
+                self.version
+            )
 
         if is_new_package:
             message = f"Package name '{self.package_name}' is available and can be claimed."
@@ -97,6 +90,7 @@ class PyPIVerifier:
             owner_info = f"The owner is '{self.pypi_owners[0]}'" if self.pypi_owners else "No owner information available"
             message = f"The package name '{self.package_name}' is taken and you, '{self.username}', are not the owner. {owner_info}. Please choose a different package name here: (or exit this, and change it in your setup/pyproject file)"
 
+        
         return is_new_package, is_our_package, is_version_available, message
 
     def verify_new_package(self):
@@ -108,12 +102,24 @@ class PyPIVerifier:
         else:
             response.raise_for_status()
 
+    def verify_package_owner(self):
+        response = requests.get(self.api_url)
+        if response.status_code == 200:
+            data = response.json()
+            pt(data)
+            # pt.ex()
+            # Safely access the 'maintainers' key using get() to avoid KeyError
+            maintainers = data['info'].get('maintainers', [])
+            self.pypi_owners = [maintainer['username'] for maintainer in maintainers]
+            return self.username in self.pypi_owners
+        return False
+
     def verify_version_available(self):
         response = requests.get(self.api_url)
         if response.status_code == 200:
             data = response.json()
             versions = data['releases'].keys()
-            return self.version not in versions  # True if version is not listed
+            return self.version not in versions 
         return False
 
 
