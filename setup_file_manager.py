@@ -1,11 +1,24 @@
 from print_tricks import pt
 import os, re, shutil
+import toml
 
 class SetupFileManager:
-    def __init__(self, project_directory, distribution_directory, package_name):
+    def __init__(self, 
+            project_directory, 
+            distribution_directory, 
+            package_name,
+            version='0.1.0',
+            username='developer-1v',
+            user_email='developer-1v@gmail.com',
+            packages='["."]',
+        ):
         self.project_directory = project_directory
         self.distribution_directory = distribution_directory
         self.package_name = package_name
+        self.version = version
+        self.username = username
+        self.user_email = user_email
+        self.packages = packages
 
     def get_setup_file_data(self):
         search_setup_path = os.path.join(self.project_directory, 'setup.py')
@@ -45,11 +58,21 @@ class SetupFileManager:
     def parse_setup_file(self, file_path):
         with open(file_path, 'r') as file:
             content = file.read()
-        package_name = self.extract_value(content, 'name=')
-        version = self.extract_value(content, 'version=')
+
+        # Adjusting the regular expressions to handle optional spaces around equals signs
+        package_name = self.extract_value(content, r'name\s*=\s*')
+        version = self.extract_value(content, r'version\s*=\s*')
+        username = self.extract_value(content, r'authors\s*=\s*\["')
+        packages = self.extract_value(content, r'packages\s*=\s*\[')
+
         if package_name == '' or version == '':
             return {'package_name': None, 'version': None}
-        return {'package_name': package_name, 'version': version}
+        return {
+            'package_name': package_name, 
+            'version': version,
+            'username': username,
+            'packages': packages
+        }
 
     def extract_value(self, content, key):
         start = content.find(key) + len(key)
@@ -65,22 +88,55 @@ class SetupFileManager:
         # pt.ex()
         this_dir = os.path.dirname(__file__)
         template_path = os.path.join(this_dir, 'pyproject_template_example.toml')
-        new_toml_path = os.path.join(self.distribution_directory, 'pyproject.toml')
-        pt(template_path, new_toml_path)
+        self.new_toml_path = os.path.join(self.distribution_directory, 'pyproject.toml')
+        pt(template_path, self.new_toml_path)
         
         os.makedirs(self.distribution_directory, exist_ok=True)
         
-        shutil.copy(template_path, new_toml_path)
+        shutil.copy(template_path, self.new_toml_path)
         
-        return self.modify_toml_file(new_toml_path)
+        return self.update_toml_file_with_all_modifications()
 
-    def modify_toml_file(self, toml_path):
-        import toml
-        import os
+    def update_toml_file_with_all_modifications(self):
+        self.modify_package_name(self.package_name)
+        self.modify_version(self.version)
+        self.modify_owner(self.username)
+        self.modify_packages(self.packages)
+        
+        return {
+            'package_name': self.package_name, 
+            'version': self.version,
+            'username': self.username,
+            'packages': self.packages,
+        }
 
-        with open(toml_path, 'r') as file:
-            template_content = file.read()
+    def save_changes(self):
+        with open(self.new_toml_path, 'w') as file:
+            file.write(self.template_content)
 
+    def read_template(self):
+        with open(self.new_toml_path, 'r') as file:
+            self.template_content = file.read()
+
+    def modify_package_name(self, new_package_name):
+        self.read_template()
+        self.template_content = re.sub(
+            r'name\s*=\s*"[^"]+"', f'name = "{new_package_name}"', self.template_content)
+        self.save_changes()
+
+    def modify_version(self, new_version):
+        self.read_template()
+        self.template_content = re.sub(
+            r'version\s*=\s*"[^"]+"', f'version = "{new_version}"', self.template_content)
+        self.save_changes()
+
+    def modify_owner(self, new_owner):
+        self.read_template()
+        self.template_content = re.sub(
+            r'authors\s*=\s*\["[^"]+"\]', f'authors = ["{new_owner}"]', self.template_content)
+        self.save_changes()
+
+    def modify_packages(self, new_packages):
         # Get the parent directory of the current distribution directory
         parent_directory = os.path.dirname(self.distribution_directory)
         escaped_parent_directory = parent_directory.replace("\\", "/")  # Use forward slashes for paths
@@ -90,66 +146,14 @@ class SetupFileManager:
         base_path = '/'.join(path_parts[:-1])  # Everything except the last part
         target_directory = path_parts[-1]  # The last part of the path
 
-        # Modify the content of the TOML file
-        modified_content = template_content.replace(
-            'name = "pup_py"', f'name = "{self.package_name}"').replace(
-            'packages = ["."]ppp', ## TODO TODO TODO FIX THIS!!!
-            f'packages = {{find = {{where = ["{base_path}/"], include = ["{target_directory}/*"]}}}}')
+        self.read_template()
+        self.template_content = re.sub(
+            r'packages\s*=\s*\["[^"]+"\]',
+            f'packages = {{find = {{where = ["{base_path}/"], include = ["{target_directory}/*"]}}}}',
+            self.template_content)
+        self.save_changes()
 
-        with open(toml_path, 'w') as file:
-            file.write(modified_content)
 
-        # Read the TOML file to get the packages
-        toml_data = toml.load(toml_path)
-        packages = toml_data.get('tool', {}).get('setuptools', {}).get('packages', {})
-        print("Packages found:", packages)
-
-        return {
-            'package_name': self.package_name, 
-            'version': self.extract_version(modified_content),
-            'username': self.extract_username(modified_content),
-        }
-    
-    # def modify_toml_file(self, toml_path):
-    #     import toml
-
-    #     with open(toml_path, 'r') as file:
-    #         template_content = file.read()
-
-    #     escaped_directory = self.distribution_directory.replace("\\", "/")  # Use forward slashes for paths
-    #     modified_content = template_content.replace(
-    #         'name = "pup_py"', f'name = "{self.package_name}"').replace(
-    #         'packages = {find = {where = ["."]}}', 
-    #         f'packages = {{find = {{where = ["{escaped_directory}"]}}}}')
-
-    #     with open(toml_path, 'w') as file:
-    #         file.write(modified_content)
-
-    #     # Read the TOML file to get the packages
-    #     toml_data = toml.load(toml_path)
-    #     packages = toml_data.get('tool', {}).get('setuptools', {}).get('packages', {})
-    #     print("Packages found:", packages)
-
-    #     return {
-    #         'package_name': self.package_name, 
-    #         'version': self.extract_version(modified_content),
-    #         'username': self.extract_username(modified_content),
-    #     }
-
-    def extract_version(self, content):
-        # Assuming the version follows a specific pattern in the content
-        version_line = re.search(r'version = "([^"]+)"', content)
-        if version_line:
-            return version_line.group(1)
-        
-        return "0.1.0"
-
-    def extract_username(self, content):
-        # Assuming the authors field in the TOML content follows a specific pattern
-        authors_line = re.search(r'authors = \["([^"]+)"\]', content)
-        if authors_line:
-            return authors_line.group(1)
-        return None
 
 
 if __name__ == '__main__':
@@ -162,8 +166,9 @@ if __name__ == '__main__':
                     if os.path.isdir(os.path.join(base_path, name)) and re.match(r'[A-Z]_', name)]
 
     ## TODO DELETE: temporary testing of individual projects
-    project_directories = ['A_with_nothing',
-                    ]
+    project_directories = [
+        'A_with_nothing',
+    ]
     
     
     for project_directory in project_directories:    
@@ -171,6 +176,9 @@ if __name__ == '__main__':
             project_directory=os.path.join(base_path, project_directory),
             distribution_directory=os.path.join(base_path, project_directory, 'build_dist'),
             package_name=project_directory,
+            version='0.1.0',
+            username='developer-1v',
+            packages='["."]',
         )
         setup_data = setup_file_manager.get_setup_file_data()
         pt(setup_data)

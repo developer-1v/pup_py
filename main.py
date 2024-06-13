@@ -24,7 +24,7 @@
 
 '''
 
-import subprocess, os, sys, tempfile, shutil, re
+import subprocess, os, sys, tempfile, shutil, re, requests
 from build.__main__ import build_package
 
 from twine.commands.upload import upload as twine_upload
@@ -47,6 +47,7 @@ class PipUniversalProjects:
         project_directory,
         destination_directory=None,
         package_name=None,
+        automatically_increment_version=False,
         distribution_subfolder='build_dist',
         pypi_structure_subfolder='pypi_system',
         pypi_build_subfolder='build_pypi',
@@ -68,6 +69,7 @@ class PipUniversalProjects:
         self.project_directory = project_directory
         self.destination_directory = project_directory if destination_directory is None else destination_directory
         self.package_name = os.path.basename(project_directory) if package_name is None else package_name
+        self.automatically_increment_version = automatically_increment_version
         self.distribution_subfolder = distribution_subfolder
         self.pypi_structure_subfolder = pypi_structure_subfolder
         self.pypi_build_subfolder = pypi_build_subfolder
@@ -82,6 +84,9 @@ class PipUniversalProjects:
         self.wheel_path = None
         self.steps_counter = 0
         
+        self.version_number = None          ## Declared here for clarity
+        self.pypi_version_number = None     ## Declared here for clarity
+        
         ## Execute
         self._execute_full_workflow()
 
@@ -91,7 +96,7 @@ class PipUniversalProjects:
         self.check_or_gen_requirements()
         self.setup_file_data()
         self.verify_package_availability_status()
-        # pt.ex()
+        pt.ex()
         self.fix_and_optimize_package()
         self.build_wheel()
         self.uninstall_package()
@@ -201,57 +206,61 @@ class PipUniversalProjects:
         self.username = self.pyproject_data['username']
         # pt(self.username)
         self.package_name = self.pyproject_data['package_name']
-        self.version = self.pyproject_data['version']
+        self.version_number = self.pyproject_data['version']
         # pt.ex()
 
     def verify_package_availability_status(self):
-        verifier = PyPIVerifier(self.package_name, self.username, self.version, self.use_test_pypi)
-        self.package_name, self.username, self.version = verifier.handle_verification()
+        self.verifier = PyPIVerifier(self.package_name, self.username, self.version_number, self.use_test_pypi)
+        self.package_name, self.username, self.version_number = self.verifier.handle_verification()
         # pt(self.username)
 
     def fix_and_optimize_package(self):
         fix_and_optimize(self.project_directory, self.distribution_directory, self.user_options)
 
-    # def build_wheel_HATCH_VERSION_FAILING(self):
-    #     ## Debug Log the contents of the project directory
-    #     # print("Contents of the project directory:")
-    #     # for root, dirs, files in os.walk(self.project_directory):
-    #     #     for file in files:
-    #     #         print(os.path.join(root, file))
+    def build_wheel_hatch_version(self):
+        '''failing
+        '''
+        ## Debug Log the contents of the project directory
+        # print("Contents of the project directory:")
+        # for root, dirs, files in os.walk(self.project_directory):
+        #     for file in files:
+        #         print(os.path.join(root, file))
         
         
-    #     original_cwd = os.getcwd()
-    #     try:
-    #         os.chdir(self.project_directory)
-    #         print("Current working directory:", os.getcwd())
-    #         target_directory = os.path.abspath(self.pypi_distribution_directory)
-    #         print(f"Target directory for build: {repr(target_directory)}")
+        original_cwd = os.getcwd()
+        try:
+            os.chdir(self.project_directory)
+            print("Current working directory:", os.getcwd())
+            target_directory = os.path.abspath(self.pypi_distribution_directory)
+            print(f"Target directory for build: {repr(target_directory)}")
 
-    #         try:
-    #             result = subprocess.run(
-    #                 ## [sys.executable, '-m', 'hatchling', 'build', '--target', target_directory],
-    #                 [sys.executable, '-m', 'hatchling', 'build'],
-    #                 check=True,
-    #                 capture_output=True,
-    #                 text=True,
-    #                 cwd=self.project_directory,
-    #             )
-    #             print('1', result.stdout)
-    #             print('2', result.stderr)
-    #         except subprocess.CalledProcessError as e:
-    #             print(f"Error during build with Hatch: {e}")
-    #             print('3', e.stdout)
-    #             print('4', e.stderr)
+            try:
+                result = subprocess.run(
+                    ## NOTE: '--target' consistently didn't work. So just build without a 
+                    ## target directory, then move the wheel file afterwards.
+                    ## [sys.executable, '-m', 'hatchling', 'build', '--target', target_directory],
+                    [sys.executable, '-m', 'hatchling', 'build'],
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    cwd=self.project_directory,
+                )
+                print('1', result.stdout)
+                print('2', result.stderr)
+            except subprocess.CalledProcessError as e:
+                print(f"Error during build with Hatch: {e}")
+                print('3', e.stdout)
+                print('4', e.stderr)
 
-    #         wheels = [f for f in os.listdir(target_directory) if f.endswith('.whl')]
+            wheels = [f for f in os.listdir(target_directory) if f.endswith('.whl')]
             
-    #         if wheels:
-    #             self.wheel_path = os.path.join(target_directory, wheels[0])
-    #             print("Wheel built successfully with Hatch:", self.wheel_path)
-    #         else:
-    #             raise FileNotFoundError("No wheel file created with Hatch.")
-    #     finally:
-    #         os.chdir(original_cwd)
+            if wheels:
+                self.wheel_path = os.path.join(target_directory, wheels[0])
+                print("Wheel built successfully with Hatch:", self.wheel_path)
+            else:
+                raise FileNotFoundError("No wheel file created with Hatch.")
+        finally:
+            os.chdir(original_cwd)
 
     def build_wheel(self):
         ## Debug Log the contents of the project directory
@@ -321,7 +330,7 @@ class PipUniversalProjects:
             print(f"Test 1 Failure: The package '{self.package_name}' is not installed or not found by pip.")
             sys.exit(1)
         
-        ## Test 2: Attempt to import the package to verify it's accessible to Python
+        ## Test 2: Attempt to import the package to verify it's accessible
         try:
             __import__(self.package_name)
             print(f"Test 2 Success: The package '{self.package_name}' was successfully imported.")
@@ -329,7 +338,7 @@ class PipUniversalProjects:
             print(f"Test 2 Failure: Could not import the package '{self.package_name}'. Error: {e}")
             sys.exit(1)
         
-        ## Test 3: Execute a small script to ensure the package's basic functionality
+        ## Test 3: Execute elsewhere to ensure the package's avaiability
         with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp:
             temp.write(
                 f'import {self.package_name}\n'
@@ -357,18 +366,18 @@ class PipUniversalProjects:
             token = os.getenv(self.pypi_token_env_var)
 
         ## Check if the token is available
-        if not token:
+        if not token: ## TODO: Change the 'TEST_PYPI_TOKEN' to 'test_pypi_token_env_var' etc???
             error_message = f"""
-Error: {'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.
+    Error: {'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.
 
-To obtain and set a PyPI token:
-1. Visit the PyPI token management page: https://pypi.org/help/#apitoken
-2. Follow the instructions to generate a new token.
-3. Set the token as an environment variable on your system:
-    - Windows: https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
-    - macOS/Linux: https://developer.apple.com/documentation/xcode/defining-environment-variables-for-mac-apps
+    To obtain and set a PyPI token:
+    1. Visit the PyPI token management page: https://pypi.org/help/#apitoken
+    2. Follow the instructions to generate a new token.
+    3. Set the token as an environment variable on your system:
+        - Windows: https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+        - macOS/Linux: https://developer.apple.com/documentation/xcode/defining-environment-variables-for-mac-apps
 
-For a visual guide on generating and setting PyPI tokens, watch this YouTube tutorial: https://youtu.be/WGsMydFFPMk?t=104 (Should start at 1:44 and last for 2 minutes to 3:45)
+    For a visual guide on generating and setting PyPI tokens, watch this YouTube tutorial: https://youtu.be/WGsMydFFPMk?t=104 (Should start at 1:44 and last for 2 minutes to 3:45)
             """
             print(error_message)
             sys.exit(1)
@@ -384,7 +393,59 @@ For a visual guide on generating and setting PyPI tokens, watch this YouTube tut
             verbose=True,
         )
         dists = [self.wheel_path]
-        twine_upload(settings, dists)
+
+        try:
+            twine_upload(settings, dists)
+        except requests.exceptions.HTTPError as e:
+            if "This filename has already been used, use a different version." in str(e):
+                if self.automatically_increment_version:
+                    self.version_number = self.verifier.auto_increment_version()
+                    self.build_wheel()  # Rebuild the wheel with the new version
+                    self.upload_package_to_pypi()  # Try uploading again
+                else:
+                    self.verifier.prompt_for_input("The current version has already been used. Please enter a new version:")
+                    self.build_wheel()  # Rebuild the wheel with the new version
+                    self.upload_package_to_pypi()  # Try uploading again
+            else:
+                raise e
+
+#     def upload_package_to_pypi(self):
+#         if self.use_test_pypi:
+#             repository_url = 'https://test.pypi.org/legacy/'
+#             token = os.getenv(self.test_pypi_token_env_var)
+#         else:
+#             repository_url = 'https://upload.pypi.org/legacy/'
+#             token = os.getenv(self.pypi_token_env_var)
+
+#         ## Check if the token is available
+#         if not token:
+#             error_message = f"""
+# Error: {'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.
+
+# To obtain and set a PyPI token:
+# 1. Visit the PyPI token management page: https://pypi.org/help/#apitoken
+# 2. Follow the instructions to generate a new token.
+# 3. Set the token as an environment variable on your system:
+#     - Windows: https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
+#     - macOS/Linux: https://developer.apple.com/documentation/xcode/defining-environment-variables-for-mac-apps
+
+# For a visual guide on generating and setting PyPI tokens, watch this YouTube tutorial: https://youtu.be/WGsMydFFPMk?t=104 (Should start at 1:44 and last for 2 minutes to 3:45)
+#             """
+#             print(error_message)
+#             sys.exit(1)
+
+#         pt.c(f'Uploading Package to {"Test PyPI" if self.use_test_pypi else "PyPI"} using token authentication')
+
+#         ## Setup Twine settings with the token
+#         settings = Settings(
+#             repository_url=repository_url,
+#             username="__token__",
+#             password=token,
+#             non_interactive=True,
+#             verbose=True,
+#         )
+#         dists = [self.wheel_path]
+#         twine_upload(settings, dists)
 
     def install_package_from_pypi(self):
         pypi_type = 'Test PyPI' if self.use_test_pypi else 'PyPI'
@@ -427,6 +488,7 @@ def test():
     for project_dir in project_dirs:    
         PipUniversalProjects(
             project_directory=os.path.join(main_projects_path, project_dir),
+            automatically_increment_version=True,
             use_standard_build_directories=True,
             use_test_pypi=True,
             # test_pypi_token_env_var='NON-EXISTANT_PYPI_TOKEN_FOR_TESTING',

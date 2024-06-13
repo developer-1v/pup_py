@@ -45,8 +45,7 @@ testing = ["pytest>=3"]
 [tool.setuptools]
 zip-safe = false
 include-package-data = true
-packages = { find = { where = [".."], include = ["A_with_nothing"] } }
-# packages = { find = { where = ["."] } }
+packages = { find = { where = [".."], include = ["."] } }
 
 
 
