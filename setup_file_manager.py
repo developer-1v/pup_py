@@ -36,53 +36,24 @@ class SetupFileManager:
                 print("Invalid setup.py found. Creating a new one from template.")
                 data = self.create_pyproject_from_template()
                 print("New pyproject.toml created from template.")
-                return data, search_toml_in_dist_dir  # Return the path to pyproject.toml
+                return data
             else:
                 print("Valid setup.py found and parsed.")
                 pt(data, search_setup_path)
-                return data, search_setup_path
+                return data
         elif os.path.exists(search_setup_in_dist_dir):
             data = self.parse_setup_file(search_setup_in_dist_dir)
             print("Setup.py found and parsed in build distribution directory.")
-            return data, search_setup_in_dist_dir
+            return data
         elif os.path.exists(search_main_py_path):
             data = self.parse_setup_file(search_main_py_path)
             shutil.copy(search_main_py_path, search_setup_in_dist_dir)
             print("Main.py found and used to create setup.py in the build distribution directory.")
-            return data, search_setup_in_dist_dir
+            return data
         else:
             data = self.create_pyproject_from_template()
             print("No setup.py or main.py found. Created new pyproject.toml from template.")
-            return data, search_toml_in_dist_dir  # Return the path to pyproject.toml
-
-    def parse_setup_file(self, file_path):
-        with open(file_path, 'r') as file:
-            content = file.read()
-
-        # Adjusting the regular expressions to handle optional spaces around equals signs
-        package_name = self.extract_value(content, r'name\s*=\s*')
-        version = self.extract_value(content, r'version\s*=\s*')
-        username = self.extract_value(content, r'authors\s*=\s*\["')
-        packages = self.extract_value(content, r'packages\s*=\s*\[')
-
-        if package_name == '' or version == '':
-            return {'package_name': None, 'version': None}
-        return {
-            'package_name': package_name, 
-            'version': version,
-            'username': username,
-            'packages': packages
-        }
-
-    def extract_value(self, content, key):
-        start = content.find(key) + len(key)
-        if start != -1:
-            end = content.find(',', start)
-            if end == -1:
-                end = len(content)
-            value = content[start:end].strip().strip("'\"")
-            return value
-        return None
+            return data
 
     def create_pyproject_from_template(self):
         # pt.ex()
@@ -97,18 +68,60 @@ class SetupFileManager:
         
         return self.update_toml_file_with_all_modifications()
 
+    def parse_setup_file(self, file_path):
+        with open(file_path, 'r') as file:
+            content = file.read()
+
+        # Adjusting the regular expressions to handle optional spaces around equals signs
+        package_name = self.extract_value(content, r'name\s*=\s*')
+        version = self.extract_value(content, r'version\s*=\s*')
+        username = self.extract_value(content, r'authors\s*=\s*\[\s*\{.*?name\s*:\s*"')
+        user_email = self.extract_value(content, r'authors\s*=\s*\[\s*\{.*?email\s*:\s*"')
+        packages = self.extract_value(content, r'packages\s*=\s*\[')
+
+        if package_name == '' or version == '':
+            return {'package_name': None, 'version': None}
+        return {
+            'package_name': package_name, 
+            'version': version,
+            'username': username,
+            'user_email': user_email,
+            'packages': packages,
+            'pyproject_file_path': file_path
+        }
+
+    def extract_value(self, content, key):
+        start = content.find(key) + len(key)
+        if start != -1:
+            end = content.find('}', start)
+            if end == -1:
+                end = len(content)
+            value = content[start:end].strip().strip("'\"").strip()
+            return value
+        return None
+
     def update_toml_file_with_all_modifications(self):
         self.modify_package_name(self.package_name)
         self.modify_version(self.version)
-        self.modify_owner(self.username)
+        self.modify_owner(self.username, self.user_email)
         self.modify_packages(self.packages)
         
         return {
             'package_name': self.package_name, 
             'version': self.version,
             'username': self.username,
+            'user_email': self.user_email,
             'packages': self.packages,
+            'pyproject_file_path': self.new_toml_path
         }
+        
+    def modify_owner(self, new_owner, new_email):
+        self.read_template()
+        self.template_content = re.sub(
+            r'authors\s*=\s*\[\s*\{.*?\}\s*\]', 
+            f'authors = [{{name = "{new_owner}"}}, {{email = "{new_email}"}}]', 
+            self.template_content)
+        self.save_changes()
 
     def save_changes(self):
         with open(self.new_toml_path, 'w') as file:
@@ -128,12 +141,6 @@ class SetupFileManager:
         self.read_template()
         self.template_content = re.sub(
             r'version\s*=\s*"[^"]+"', f'version = "{new_version}"', self.template_content)
-        self.save_changes()
-
-    def modify_owner(self, new_owner):
-        self.read_template()
-        self.template_content = re.sub(
-            r'authors\s*=\s*\["[^"]+"\]', f'authors = ["{new_owner}"]', self.template_content)
         self.save_changes()
 
     def modify_packages(self, new_packages):

@@ -200,13 +200,15 @@ class PipUniversalProjects:
             self.distribution_directory,
             self.package_name,
             )
-        self.pyproject_data, self.pyproject_file_path = self.setup_file_manager.get_setup_file_data()
+        self.pyproject_data = self.setup_file_manager.get_setup_file_data()
         pt(self.pyproject_data)
         
         self.username = self.pyproject_data['username']
         # pt(self.username)
         self.package_name = self.pyproject_data['package_name']
         self.version_number = self.pyproject_data['version']
+        
+        self.pyproject_file_path = self.pyproject_data['pyproject_file_path']
         # pt.ex()
 
     def verify_package_availability_status(self):
