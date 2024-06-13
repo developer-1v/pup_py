@@ -8,6 +8,7 @@ name = "pup_py"
 version = "0.1.0"
 # authors = [{name = "developer-1v", email = "Developer-1v@proton.me"}] ## NOTE: I original had this, which is supposed to be correct, but it won't work with current setuptools 
 authors = [{name = "developer-1v"}, {email = "Developer-1v@proton.me"}]
+maintainers = [{name = "developer-1v"}, {email = "developer-1v@gmail.com"}]
 license = {text = "MIT License"}
 description = """ Homepage: https://github.com/developer-1v/pup_py\n\nCreates a package from a source and then automatically tests the package, uploads to PyPI, and installs to your PC"""
 keywords = [

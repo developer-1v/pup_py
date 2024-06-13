@@ -407,12 +407,11 @@ class PipUniversalProjects:
             twine_upload(settings, dists)
         except requests.exceptions.HTTPError as e:
             pt(e)
-            if pt.after(2):
-                pt.ex()
             if "This filename has already been used, use a different version." in str(e):
                 pt()
                 if self.automatically_increment_version:
                     pt()
+                    self.verifier.verify_version_available()
                     self.version_number = self.verifier.auto_increment_version()
                     pt(self.version_number)
                     self.setup_file_manager.modify_version(self.version_number)

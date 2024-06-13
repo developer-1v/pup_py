@@ -19,6 +19,8 @@ class PyPIVerifier:
         self.use_gui = use_gui
         self.api_url = f"{base_url}/{package_name}/json"
         self.pypi_owners = []  # New attribute to store the list of maintainers
+        
+        self.pypi_version_number = None
 
     def prompt_for_input(self, prompt_message, input_type='text'):
         """
@@ -36,20 +38,10 @@ class PyPIVerifier:
             ## CLI input
             return input(prompt_message)
 
-    def auto_increment_version(self):
-        ## Split the version number
-        parts = self.version_number.split('.')
-        ## Convert the last part to an integer and increment it
-        parts[-1] = str(int(parts[-1]) + 1)
-        # Join the parts back into a singular version number
-        self.version_number = '.'.join(parts)
-        pt(self.version_number)
-        return self.version_number
-
     def handle_verification(self):
         is_new_package, is_our_package, is_version_available, message = self.check_package_status()
         print(message)
-
+        
         if not is_our_package:
             choice = self.prompt_for_input("Package name might be taken or username might be incorrect. Choose an option:\n1. Change package name\n2. Change username\nEnter choice (1 or 2):", input_type='choice')
             if choice == '1':
@@ -62,35 +54,36 @@ class PyPIVerifier:
                 if new_username:
                     self.username = new_username
                     return self.handle_verification()
-
+                
         if not is_version_available:
             if self.automatically_increment_version:
-                self.auto_increment_version()
-                return self.handle_verification()
+                self.version_number = self.auto_increment_version()
             else:
-                new_version = self.prompt_for_input("Enter a new version number:")
-                if new_version:
-                    self.version_number = new_version
-                    return self.handle_verification()
-
+                self.version_number = self.prompt_for_input("Enter a new version number:")
+            
+            return self.handle_verification()
+        
         return self.package_name, self.username, self.version_number
 
     def check_package_status(self, debug=True):
         is_new_package = self.verify_new_package()
         if is_new_package:
+            pt()
             is_our_package = True
             is_version_available = True
         else:
+            pt()
             is_our_package = self.verify_package_owner()
-            is_version_available = self.verify_version_available() if is_our_package else False
+            is_version_available, self.pypi_version_number = self.verify_version_available() if is_our_package else False
 
         if debug:
-            pt(is_new_package, 
-                is_our_package, 
-                self.username, 
-                self.pypi_owners, 
-                is_version_available, 
-                self.version_number
+            pt(is_new_package,
+                is_our_package,
+                self.username,
+                self.pypi_owners,
+                is_version_available,
+                self.version_number,
+                self.pypi_version_number
             )
 
         if is_new_package:
@@ -109,6 +102,7 @@ class PyPIVerifier:
 
     def verify_new_package(self):
         response = requests.get(self.api_url)
+
         if response.status_code == 200:
             return False  # Package name is already taken
         elif response.status_code == 404:
@@ -120,30 +114,72 @@ class PyPIVerifier:
         response = requests.get(self.api_url)
         if response.status_code == 200:
             data = response.json()
-            pt(data)
+            # pt(data)
             # pt.ex()
             # Safely access the 'maintainers' key using get() to avoid KeyError
-            maintainers = data['info'].get('maintainers', [])
-            self.pypi_owners = [maintainer['username'] for maintainer in maintainers]
-            return self.username in self.pypi_owners
+            author = data['info'].get('author', [])
+            # self.pypi_owners = [author['username'] for author in authors]
+            # pt(self.username, author, self.username in  author)
+            
+            return self.username in author
         return False
+
+    def check_version_lower(self, latest_version):
+        """
+        Check if the current version number is lower than the latest version on PyPI.
+        Prompt the user to accept the lower version or input a new one if it is lower.
+        """
+        if latest_version is None:
+            return  # No latest version found, possibly due to an error or new package
+
+        # Compare current version with the latest version
+        current_version_tuple = tuple(map(int, self.version_number.split('.')))
+        latest_version_tuple = tuple(map(int, latest_version.split('.')))
+
+        if current_version_tuple < latest_version_tuple:
+            print(f"Your version ({self.version_number}) is lower than the latest version on PyPI ({latest_version}).")
+            choice = self.prompt_for_input("Do you want to proceed with the lower version? Type 'yes' to proceed or enter a new version number:", input_type='text')
+            if choice.lower() != 'yes':
+                self.version_number = choice  # Update the version number with user input
+                return self.handle_verification()  # Re-run the verification with the new version number
+        else:
+            print("Your version is up-to-date or higher than the version on PyPI.")
 
     def verify_version_available(self):
         response = requests.get(self.api_url)
+        
         if response.status_code == 200:
             data = response.json()
-            versions = data['releases'].keys()
-            return self.version_number not in versions 
-        return False
+            versions = data['releases'].keys()  # Get all versions
+            pt(versions)
+            latest_version = sorted(versions, key=lambda v: tuple(map(int, v.split('.'))), reverse=True)[0]
+            pt(latest_version)
+            self.pypi_version_number = latest_version
+            
+            # Now pass the latest version to check_version_lower
+            self.check_version_lower(latest_version)  # Check if the current version is lower and handle accordingly
+            # Check if the current version is already taken
+            is_version_available = self.version_number not in versions
+            
+            return is_version_available, self.pypi_version_number
+        return False, None
 
-
+    def auto_increment_version(self):
+        ## Split the version number
+        parts = self.pypi_version_number.split('.')
+        ## Convert the last part to an integer and increment it
+        parts[-1] = str(int(parts[-1]) + 1)
+        # Join the parts back into a singular version number
+        self.version_number = '.'.join(parts)
+        pt(self.version_number)
+        return self.version_number
 
 if __name__ == "__main__":
     verifier = PyPIVerifier(
         "A_with_nothing", 
         "developer-1v",
         "0.1.0",
-        use_test_pypi=False
+        use_test_pypi=True
         )
     updated_package_name, updated_username, updated_version = verifier.handle_verification()
     pt(updated_package_name, updated_username, updated_version)
