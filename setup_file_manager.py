@@ -155,8 +155,9 @@ class SetupFileManager:
 
         self.read_template()
         self.template_content = re.sub(
-            r'packages\s*=\s*\["[^"]+"\]',
-            f'packages = {{find = {{where = ["{base_path}/"], include = ["{target_directory}/*"]}}}}',
+            r'packages\s*=\s*\{\s*find\s*=\s*\{\s*where\s*=\s*\["[^"]*"\],\s*include\s*=\s*\["[^"]*"\]\s*\}\s*\}',
+            # f'packages = {{find = {{where = [".."], include = ["{target_directory}/*"]}}}}',
+            f'packages = {{find = {{where = [".."], include = ["{self.package_name}*"]}}}}',
             self.template_content)
         self.save_changes()
 

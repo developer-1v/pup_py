@@ -43,7 +43,7 @@ class PyPIVerifier:
         parts[-1] = str(int(parts[-1]) + 1)
         # Join the parts back into a singular version number
         self.version_number = '.'.join(parts)
-        pt(self.version_version)
+        pt(self.version_number)
         return self.version_number
 
     def handle_verification(self):

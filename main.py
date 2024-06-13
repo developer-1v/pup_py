@@ -96,7 +96,7 @@ class PipUniversalProjects:
         self.check_or_gen_requirements()
         self.setup_file_data()
         self.verify_package_availability_status()
-        pt.ex()
+        # pt.ex()
         self.fix_and_optimize_package()
         self.build_wheel()
         self.uninstall_package()
@@ -271,7 +271,6 @@ class PipUniversalProjects:
         #     for file in files:
         #         print(os.path.join(root, file))
         
-        
         original_cwd = os.getcwd()
         
         try:
@@ -279,7 +278,13 @@ class PipUniversalProjects:
             print("Current working directory:", os.getcwd())
             print("self.project_directory (repr):", repr(self.project_directory))
             print("Does self.project_directory exist?", os.path.exists(self.project_directory))
-
+            
+            # Clear existing build directory to avoid using stale data
+            build_dir = os.path.join(self.pypi_structure_directory, self.pypi_build_subfolder)
+            if os.path.exists(build_dir):
+                shutil.rmtree(build_dir)
+                print(f"Cleared old build directory at {build_dir}.")
+                
             # Building the wheel
             try:
                 # Using the build module to build the package
@@ -293,14 +298,14 @@ class PipUniversalProjects:
             except subprocess.CalledProcessError as e:
                 print("Error during build:", e.stderr)
                 raise
-
+            
             # Check for the wheel file in the output directory
-            wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl')]
+            wheels = [f for f in os.listdir(self.pypi_distribution_directory) if f.endswith('.whl') and self.version_number in f]
             if wheels:
                 self.wheel_path = os.path.join(self.pypi_distribution_directory, wheels[0])
                 print("Wheel built successfully:", self.wheel_path)
             else:
-                raise FileNotFoundError("No wheel file created.")
+                raise FileNotFoundError(f"No wheel file created for version {self.version_number}.")
         finally:
             os.chdir(original_cwd)
 
@@ -395,20 +400,32 @@ class PipUniversalProjects:
             verbose=True,
         )
         dists = [self.wheel_path]
+        pt(dists)
 
         try:
+            pt()
             twine_upload(settings, dists)
         except requests.exceptions.HTTPError as e:
+            pt(e)
+            if pt.after(2):
+                pt.ex()
             if "This filename has already been used, use a different version." in str(e):
+                pt()
                 if self.automatically_increment_version:
+                    pt()
                     self.version_number = self.verifier.auto_increment_version()
+                    pt(self.version_number)
+                    self.setup_file_manager.modify_version(self.version_number)
                     self.build_wheel()  # Rebuild the wheel with the new version
                     self.upload_package_to_pypi()  # Try uploading again
                 else:
+                    pt()
                     self.verifier.prompt_for_input("The current version has already been used. Please enter a new version:")
+                    self.setup_file_manager.modify_version(self.version_number)
                     self.build_wheel()  # Rebuild the wheel with the new version
                     self.upload_package_to_pypi()  # Try uploading again
             else:
+                pt()
                 raise e
 
 #     def upload_package_to_pypi(self):
