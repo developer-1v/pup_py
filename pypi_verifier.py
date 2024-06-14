@@ -25,6 +25,7 @@ class PyPIVerifier:
     def prompt_for_input(self, prompt_message, input_type='text'):
         """
         Generic method to prompt user for input. Adapts to GUI or CLI based on configuration.
+        Adds a blinking cursor when waiting for input in CLI.
         """
         if self.use_gui:
             ## GUI placeholder
@@ -35,10 +36,28 @@ class PyPIVerifier:
             user_input = simpledialog.askstring("Input", prompt_message)
             return user_input
         else:
-            ## CLI input
-            return input(prompt_message)
+            ## CLI input with blinking cursor
+            import sys
+            import time
 
-    def handle_verification(self):
+            # Enable blinking cursor
+            sys.stdout.write('\033[?25h')  # CSI ? 25 h - Show cursor
+            sys.stdout.flush()
+            user_input = input(prompt_message)
+            # Disable blinking cursor after input
+            sys.stdout.write('\033[?25l')  # CSI ? 25 l - Hide cursor
+            sys.stdout.flush()
+
+            return user_input
+
+    def handle_verification(self, attempt=0):
+        max_attempts = 5  # Maximum number of attempts before stopping recursion
+        if pt.after(3):
+            pt.ex()
+        if attempt >= max_attempts:
+            print("Maximum attempts reached. Exiting verification process.")
+            return None  # Or handle this case as needed
+
         is_new_package, is_our_package, is_version_available, message = self.check_package_status()
         print(message)
         
@@ -48,12 +67,12 @@ class PyPIVerifier:
                 new_package_name = self.prompt_for_input("Enter a new package name:")
                 if new_package_name:
                     self.package_name = new_package_name
-                    return self.handle_verification()
+                    return self.handle_verification(attempt + 1)
             elif choice == '2':
                 new_username = self.prompt_for_input("Enter a new username:")
                 if new_username:
                     self.username = new_username
-                    return self.handle_verification()
+                    return self.handle_verification(attempt + 1)
                 
         if not is_version_available:
             if self.automatically_increment_version:
@@ -61,7 +80,7 @@ class PyPIVerifier:
             else:
                 self.version_number = self.prompt_for_input("Enter a new version number:")
             
-            return self.handle_verification()
+            return self.handle_verification(attempt + 1)
         
         return self.package_name, self.username, self.version_number
 
@@ -124,27 +143,30 @@ class PyPIVerifier:
             return self.username in author
         return False
 
-    def check_version_lower(self, latest_version):
-        """
-        Check if the current version number is lower than the latest version on PyPI.
-        Prompt the user to accept the lower version or input a new one if it is lower.
-        """
+    def check_if_version_lower_than_latest(self, latest_version):
         if latest_version is None:
             return  # No latest version found, possibly due to an error or new package
 
-        # Compare current version with the latest version
         current_version_tuple = tuple(map(int, self.version_number.split('.')))
         latest_version_tuple = tuple(map(int, latest_version.split('.')))
 
         if current_version_tuple < latest_version_tuple:
             print(f"Your version ({self.version_number}) is lower than the latest version on PyPI ({latest_version}).")
-            choice = self.prompt_for_input("Do you want to proceed with the lower version? Type 'yes' to proceed or enter a new version number:", input_type='text')
-            if choice.lower() != 'yes':
-                self.version_number = choice  # Update the version number with user input
-                return self.handle_verification()  # Re-run the verification with the new version number
+            
+            if self.automatically_increment_version:
+                self.version_number = self.auto_increment_version()
+                return True  # Indicate that the version was incremented
+            else:
+                choice = self.prompt_for_input("Do you want to proceed with the lower version? Type 'yes' to proceed or enter a new version number:", input_type='text')
+                if choice.lower() != 'yes':
+                    self.version_number = choice  # Update the version number with user input
+                    return True  # Indicate that the version was updated
+                else:
+                    return False  # No update to version, may need to handle differently
         else:
             print("Your version is up-to-date or higher than the version on PyPI.")
-
+            return True  # No need for further action
+    
     def verify_version_available(self):
         response = requests.get(self.api_url)
         
@@ -153,11 +175,11 @@ class PyPIVerifier:
             versions = data['releases'].keys()  # Get all versions
             pt(versions)
             latest_version = sorted(versions, key=lambda v: tuple(map(int, v.split('.'))), reverse=True)[0]
-            pt(latest_version)
+        pt(latest_version)
             self.pypi_version_number = latest_version
             
-            # Now pass the latest version to check_version_lower
-            self.check_version_lower(latest_version)  # Check if the current version is lower and handle accordingly
+            # Now pass the latest version to check_if_version_lower_than_latest
+            self.check_if_version_lower_than_latest(latest_version)  # Check if the current version is lower and handle accordingly
             # Check if the current version is already taken
             is_version_available = self.version_number not in versions
             
@@ -165,6 +187,7 @@ class PyPIVerifier:
         return False, None
 
     def auto_increment_version(self):
+        self.verify_version_available() ## updates the self.pypi_version_number
         ## Split the version number
         parts = self.pypi_version_number.split('.')
         ## Convert the last part to an integer and increment it

@@ -1,38 +1,85 @@
+''' Blinking Cursor in cmd '''
+
+import sys
+import time
+import msvcrt
+
+def blinking_cursor(prompt, symbols):
+    try:
+        sys.stdout.write(prompt)
+        sys.stdout.flush()
+        input_text = ""
+        index = 0
+        while True:
+            if msvcrt.kbhit():
+                char = msvcrt.getwch()  # Get the character
+                if char == '\r':  # Enter key is pressed
+                    sys.stdout.write("\r" + prompt + input_text + " " * len(symbols[index % len(symbols)]))  # Clear last symbol
+                    sys.stdout.flush()
+                    break
+                elif char == '\x08':  # Backspace is handled
+                    input_text = input_text[:-1]  # Remove last character
+                    sys.stdout.write("\r" + prompt + input_text + " " * (len(symbols[index % len(symbols)]) - 1))
+                    sys.stdout.flush()
+                else:
+                    input_text += char
+                    sys.stdout.write("\r" + prompt + input_text + symbols[index % len(symbols)])
+                    sys.stdout.flush()
+            else:
+                sys.stdout.write("\r" + prompt + input_text + symbols[index % len(symbols)])
+                sys.stdout.flush()
+                index += 1
+                time.sleep(0.5)
+        return input_text
+    except KeyboardInterrupt:
+        return ""
+
+if __name__ == "__main__":
+    # Test with simple cursor blink
+    user_input_simple = blinking_cursor("Enter your input: ", [" ", "_"])
+    print("\nYou entered with simple blink:", user_input_simple)
+
+    # Test with complex pattern
+    user_input_complex = blinking_cursor("Enter your input: ", ["|", "/", "-", "\\"])
+    print("\nYou entered with complex pattern:", user_input_complex)
+
+
+
 '''Find packages in a project'''
 
-import os
-import setuptools
+# import os
+# import setuptools
 
-def list_directory_contents(directory):
-    # List all files and directories in the project directory
-    contents = os.listdir(directory)
-    print("Contents of the project directory:")
-    for item in contents:
-        print(item)
+# def list_directory_contents(directory):
+#     # List all files and directories in the project directory
+#     contents = os.listdir(directory)
+#     print("Contents of the project directory:")
+#     for item in contents:
+#         print(item)
 
-    # Check for Python files specifically
-    python_files = [file for file in contents if file.endswith('.py')]
-    print("\nPython files in the project directory:")
-    for py_file in python_files:
-        print(py_file)
+#     # Check for Python files specifically
+#     python_files = [file for file in contents if file.endswith('.py')]
+#     print("\nPython files in the project directory:")
+#     for py_file in python_files:
+#         print(py_file)
 
-    # If no Python files are found
-    if not python_files:
-        print("\nNo Python files found in the project directory. This is likely why the package cannot be imported.")
+#     # If no Python files are found
+#     if not python_files:
+#         print("\nNo Python files found in the project directory. This is likely why the package cannot be imported.")
 
-def find_and_print_packages(directory):
-    # Use setuptools to find packages in the specified directory
-    # Include the root directory if necessary
-    found_packages = setuptools.find_packages(where=directory, include=["*"])
-    print("\nFound packages:", found_packages)
+# def find_and_print_packages(directory):
+#     # Use setuptools to find packages in the specified directory
+#     # Include the root directory if necessary
+#     found_packages = setuptools.find_packages(where=directory, include=["*"])
+#     print("\nFound packages:", found_packages)
 
-def main():
-    project_dir = r"C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects\A_with_nothing"
-    list_directory_contents(project_dir)
-    find_and_print_packages(project_dir)
+# def main():
+#     project_dir = r"C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects\A_with_nothing"
+#     list_directory_contents(project_dir)
+#     find_and_print_packages(project_dir)
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
 
 
 
