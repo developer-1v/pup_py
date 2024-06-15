@@ -5,53 +5,54 @@ import msvcrt
 import time
 import threading
 
-def blinking_cursor(prompt, symbols, blink_sleep_time=0.3):
+def blinking_cursor(prompt, symbols=['_', '_'], blink_sleep_time=0.3):
     if isinstance(symbols, str):
         symbols = list(symbols)
 
     input_text = ""
-    index = [0]  # Use a list to allow modification in inner function
-    stop_blinking = [False]  # Flag to stop the blinking thread
+    index = [0]
+    stop_blinking = [False]
 
     def blink_cursor():
         while not stop_blinking[0]:
             if msvcrt.kbhit():
-                # If a key is hit, do not blink
+                ## If a key is hit, do not blink
                 continue
             sys.stdout.write("\r" + prompt + input_text + symbols[index[0] % len(symbols)])
             sys.stdout.flush()
             index[0] += 1
             time.sleep(blink_sleep_time)
 
-    # Start the blinking cursor in a separate thread
+    ## Start the blinking cursor in a separate thread (in order to separate
+    ## the speed of the cursor from the natural speed of typing). 
     blink_thread = threading.Thread(target=blink_cursor)
     blink_thread.start()
 
     try:
         while True:
             if msvcrt.kbhit():
-                char = msvcrt.getwch()  # Get character
-                if char == '\r':  # Enter key
-                    stop_blinking[0] = True  # Stop blinking
+                char = msvcrt.getwch()  ## Get character
+                if char == '\r':  ## Enter key
+                    stop_blinking[0] = True  ## Stop blinking
                     sys.stdout.write("\r" + prompt + input_text + " " * len(symbols[index[0] % len(symbols)]))  # Clear last symbol
                     sys.stdout.flush()
-                    sys.stdout.write("\n")  # Move to a new line after input is complete
+                    sys.stdout.write("\n")  ## Move to a new line after input is complete
                     break
-                elif char == '\x08':  # Backspace
-                    if input_text:  # Only attempt to backspace if there's text
-                        input_text = input_text[:-1]  # Remove last character
-                        sys.stdout.write("\r" + prompt + input_text + " " * (len(symbols[index[0] % len(symbols)]) + 1))  # Clear the line
+                elif char == '\x08':  ## Backspace
+                    if input_text:  ## Only attempt to backspace if there's text
+                        input_text = input_text[:-1]  ## Remove last character
+                        sys.stdout.write("\r" + prompt + input_text + " " * (len(symbols[index[0] % len(symbols)]) + 1))  ## Clear the line
                         sys.stdout.flush()
                 else:
                     input_text += char
                     sys.stdout.write("\r" + prompt + input_text + symbols[index[0] % len(symbols)])
                     sys.stdout.flush()
     except KeyboardInterrupt:
-        stop_blinking[0] = True  # Ensure the blinking stops if interrupted
+        stop_blinking[0] = True  ## Ensure the blinking stops if interrupted
         return ""
     finally:
-        stop_blinking[0] = True  # Ensure the blinking stops on function exit
-        blink_thread.join()  # Wait for the blinking thread to finish
+        stop_blinking[0] = True  ## Ensure the blinking stops on function exit
+        blink_thread.join()  ## Wait for the blinking thread to finish
 
     return input_text
 
