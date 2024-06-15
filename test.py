@@ -1,49 +1,83 @@
 ''' Blinking Cursor in cmd '''
 
 import sys
-import time
 import msvcrt
+import time
+import threading
 
-def blinking_cursor(prompt, symbols):
+def blinking_cursor(prompt, symbols, blink_sleep_time=0.3):
+    if isinstance(symbols, str):
+        symbols = list(symbols)
+
+    input_text = ""
+    index = [0]  # Use a list to allow modification in inner function
+    stop_blinking = [False]  # Flag to stop the blinking thread
+
+    def blink_cursor():
+        while not stop_blinking[0]:
+            if msvcrt.kbhit():
+                # If a key is hit, do not blink
+                continue
+            sys.stdout.write("\r" + prompt + input_text + symbols[index[0] % len(symbols)])
+            sys.stdout.flush()
+            index[0] += 1
+            time.sleep(blink_sleep_time)
+
+    # Start the blinking cursor in a separate thread
+    blink_thread = threading.Thread(target=blink_cursor)
+    blink_thread.start()
+
     try:
-        sys.stdout.write(prompt)
-        sys.stdout.flush()
-        input_text = ""
-        index = 0
         while True:
             if msvcrt.kbhit():
-                char = msvcrt.getwch()  # Get the character
-                if char == '\r':  # Enter key is pressed
-                    sys.stdout.write("\r" + prompt + input_text + " " * len(symbols[index % len(symbols)]))  # Clear last symbol
+                char = msvcrt.getwch()  # Get character
+                if char == '\r':  # Enter key
+                    stop_blinking[0] = True  # Stop blinking
+                    sys.stdout.write("\r" + prompt + input_text + " " * len(symbols[index[0] % len(symbols)]))  # Clear last symbol
                     sys.stdout.flush()
+                    sys.stdout.write("\n")  # Move to a new line after input is complete
                     break
-                elif char == '\x08':  # Backspace is handled
-                    input_text = input_text[:-1]  # Remove last character
-                    sys.stdout.write("\r" + prompt + input_text + " " * (len(symbols[index % len(symbols)]) - 1))
-                    sys.stdout.flush()
+                elif char == '\x08':  # Backspace
+                    if input_text:  # Only attempt to backspace if there's text
+                        input_text = input_text[:-1]  # Remove last character
+                        sys.stdout.write("\r" + prompt + input_text + " " * (len(symbols[index[0] % len(symbols)]) + 1))  # Clear the line
+                        sys.stdout.flush()
                 else:
                     input_text += char
-                    sys.stdout.write("\r" + prompt + input_text + symbols[index % len(symbols)])
+                    sys.stdout.write("\r" + prompt + input_text + symbols[index[0] % len(symbols)])
                     sys.stdout.flush()
-            else:
-                sys.stdout.write("\r" + prompt + input_text + symbols[index % len(symbols)])
-                sys.stdout.flush()
-                index += 1
-                time.sleep(0.5)
-        return input_text
     except KeyboardInterrupt:
+        stop_blinking[0] = True  # Ensure the blinking stops if interrupted
         return ""
+    finally:
+        stop_blinking[0] = True  # Ensure the blinking stops on function exit
+        blink_thread.join()  # Wait for the blinking thread to finish
+
+    return input_text
 
 if __name__ == "__main__":
-    # Test with simple cursor blink
-    user_input_simple = blinking_cursor("Enter your input: ", [" ", "_"])
-    print("\nYou entered with simple blink:", user_input_simple)
+    ## Test 1: Passed 2 symbols (space & underscore). 
+    user_input = blinking_cursor("1 Enter your input: ", [" ", "_"])
+    print("\nYou entered with simple blink:", user_input)
 
-    # Test with complex pattern
-    user_input_complex = blinking_cursor("Enter your input: ", ["|", "/", "-", "\\"])
+    ## Test 1a: passed both symbols as a single string (space & underscore)
+    user_input_simple = blinking_cursor("1a Enter your input: ", " _")
+    print("\nYou entered with simple blink:", user_input)
+
+    ## Test 2: complex pattern
+    user_input = blinking_cursor("2 Enter your input: ", ["|", "/", "-", "\\"])
+    print("\nYou entered with complex pattern:", user_input)
+
+    ## Test 2a: passed both symbols as a single string
+    user_input_complex = blinking_cursor("2a Enter your input: ", "|/-\\")
+    print("\nYou entered with complex pattern:", user_input)
+
+    ## Test 2b: passed the word "loading"
+    user_input_complex = blinking_cursor("2b Enter your input: ", "Loading")
     print("\nYou entered with complex pattern:", user_input_complex)
-
-
+    
+    
+    
 
 '''Find packages in a project'''
 
@@ -127,7 +161,7 @@ if __name__ == "__main__":
 #     main(r'c:\.pythonprojects\savedtests\_test_projects_for_building_packages\projects\a_with_nothing\dist\a_with_nothing-0.1.0-py3-none-any.whl')
 
 
-# ''' print out the contents of the directories for AI assitance'''
+''' print out the contents of a directory (for online or AI assitance)'''
 # # import os
 
 # # Directory path
