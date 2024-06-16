@@ -1,120 +1,42 @@
-''' Blinking Cursor in cmd '''
 
-import sys
-import msvcrt
-import time
-import threading
 
-def blinking_cursor(prompt, symbols=['_', '_'], blink_sleep_time=0.3):
-    if isinstance(symbols, str):
-        symbols = list(symbols)
 
-    input_text = ""
-    index = [0]
-    stop_blinking = [False]
+'''Find packages in a project
+- implement with pup_py '''
 
-    def blink_cursor():
-        while not stop_blinking[0]:
-            if msvcrt.kbhit():
-                ## If a key is hit, do not blink
-                continue
-            sys.stdout.write("\r" + prompt + input_text + symbols[index[0] % len(symbols)])
-            sys.stdout.flush()
-            index[0] += 1
-            time.sleep(blink_sleep_time)
+import os
+import setuptools
 
-    ## Start the blinking cursor in a separate thread (in order to separate
-    ## the speed of the cursor from the natural speed of typing). 
-    blink_thread = threading.Thread(target=blink_cursor)
-    blink_thread.start()
+def list_directory_contents(directory):
+    # List all files and directories in the project directory
+    contents = os.listdir(directory)
+    print("Contents of the project directory:")
+    for item in contents:
+        print(item)
 
-    try:
-        while True:
-            if msvcrt.kbhit():
-                char = msvcrt.getwch()  ## Get character
-                if char == '\r':  ## Enter key
-                    stop_blinking[0] = True  ## Stop blinking
-                    sys.stdout.write("\r" + prompt + input_text + " " * len(symbols[index[0] % len(symbols)]))  # Clear last symbol
-                    sys.stdout.flush()
-                    sys.stdout.write("\n")  ## Move to a new line after input is complete
-                    break
-                elif char == '\x08':  ## Backspace
-                    if input_text:  ## Only attempt to backspace if there's text
-                        input_text = input_text[:-1]  ## Remove last character
-                        sys.stdout.write("\r" + prompt + input_text + " " * (len(symbols[index[0] % len(symbols)]) + 1))  ## Clear the line
-                        sys.stdout.flush()
-                else:
-                    input_text += char
-                    sys.stdout.write("\r" + prompt + input_text + symbols[index[0] % len(symbols)])
-                    sys.stdout.flush()
-    except KeyboardInterrupt:
-        stop_blinking[0] = True  ## Ensure the blinking stops if interrupted
-        return ""
-    finally:
-        stop_blinking[0] = True  ## Ensure the blinking stops on function exit
-        blink_thread.join()  ## Wait for the blinking thread to finish
+    # Check for Python files specifically
+    python_files = [file for file in contents if file.endswith('.py')]
+    print("\nPython files in the project directory:")
+    for py_file in python_files:
+        print(py_file)
 
-    return input_text
+    # If no Python files are found
+    if not python_files:
+        print("\nNo Python files found in the project directory. This is likely why the package cannot be imported.")
 
-if __name__ == "__main__":
-    ## Test 1: Passed 2 symbols (space & underscore). 
-    user_input = blinking_cursor("1 Enter your input: ", [" ", "_"])
-    print("\nYou entered with simple blink:", user_input)
+def find_and_print_packages(directory):
+    # Use setuptools to find packages in the specified directory
+    # Include the root directory if necessary
+    found_packages = setuptools.find_packages(where=directory, include=["*"])
+    print("\nFound packages:", found_packages)
 
-    ## Test 1a: passed both symbols as a single string (space & underscore)
-    user_input_simple = blinking_cursor("1a Enter your input: ", " _")
-    print("\nYou entered with simple blink:", user_input)
+def main():
+    project_dir = r"C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects\A_with_nothing"
+    list_directory_contents(project_dir)
+    find_and_print_packages(project_dir)
 
-    ## Test 2: complex pattern
-    user_input = blinking_cursor("2 Enter your input: ", ["|", "/", "-", "\\"])
-    print("\nYou entered with complex pattern:", user_input)
-
-    ## Test 2a: passed both symbols as a single string
-    user_input_complex = blinking_cursor("2a Enter your input: ", "|/-\\")
-    print("\nYou entered with complex pattern:", user_input)
-
-    ## Test 2b: passed the word "loading"
-    user_input_complex = blinking_cursor("2b Enter your input: ", "Loading")
-    print("\nYou entered with complex pattern:", user_input_complex)
-    
-    
-    
-
-'''Find packages in a project'''
-
-# import os
-# import setuptools
-
-# def list_directory_contents(directory):
-#     # List all files and directories in the project directory
-#     contents = os.listdir(directory)
-#     print("Contents of the project directory:")
-#     for item in contents:
-#         print(item)
-
-#     # Check for Python files specifically
-#     python_files = [file for file in contents if file.endswith('.py')]
-#     print("\nPython files in the project directory:")
-#     for py_file in python_files:
-#         print(py_file)
-
-#     # If no Python files are found
-#     if not python_files:
-#         print("\nNo Python files found in the project directory. This is likely why the package cannot be imported.")
-
-# def find_and_print_packages(directory):
-#     # Use setuptools to find packages in the specified directory
-#     # Include the root directory if necessary
-#     found_packages = setuptools.find_packages(where=directory, include=["*"])
-#     print("\nFound packages:", found_packages)
-
-# def main():
-#     project_dir = r"C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects\A_with_nothing"
-#     list_directory_contents(project_dir)
-#     find_and_print_packages(project_dir)
-
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()
 
 
 

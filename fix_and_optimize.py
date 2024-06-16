@@ -1,7 +1,47 @@
 import os, json
 from print_tricks import pt
 
-def create_init_files(project_dir, distribution_dir, user_options):
+
+
+    
+
+import os, json
+
+def find_py_directories(project_dir, excludes):
+    """
+    Walks through the project directory to find directories containing .py files
+    that need an __init__.py file but do not already have one.
+    """
+    py_directories = []
+    for root, dirs, files in os.walk(project_dir):
+        valid_dirs = []
+        for d in dirs:
+            full_path = os.path.join(root, d)
+            if not (d.startswith('.') or d.startswith('__')) and not any(excluded == os.path.basename(full_path) for excluded in excludes):
+                valid_dirs.append(d)
+        dirs[:] = valid_dirs  # Update the list of directories with those that are not excluded
+
+        if any(file.endswith('.py') for file in files) and '__init__.py' not in files:
+            py_directories.append(root)
+    return py_directories
+
+def create_init_files(directories, distribution_dir):
+    """
+    Creates an __init__.py file in each directory specified in the directories list.
+    """
+    created_init_in_dirs = []
+    for directory in directories:
+        init_path = os.path.join(directory, '__init__.py')
+        open(init_path, 'a').close()  # Create an empty __init__.py file
+        print(f'Created __init__.py in {directory}')
+        created_init_in_dirs.append(directory)
+
+    # Save the paths of created __init__.py files, so we can reverse this later if needed
+    created_init_files_json = os.path.join(distribution_dir, 'created_init_files.json')
+    with open(created_init_files_json, 'w') as f:
+        json.dump(created_init_in_dirs, f)
+
+def create_init_files_main(project_dir, distribution_dir, user_options):
     _excludes = [
         "__pycache__", # python cache
         ".directory", # directory
@@ -41,36 +81,12 @@ def create_init_files(project_dir, distribution_dir, user_options):
         ".serverless",  # Serverless framework
         ".terraform",  # Terraform module cache
     ]
-    
     additional_excludes = user_options.get('excluded_folders', [])
     if additional_excludes:
         _excludes.extend(additional_excludes)
-    
-    created_init_in_dirs = []
-    valid_dirs = []  # List to store directories that should be traversed
-    for root, dirs, files in os.walk(project_dir):
-        
-        valid_dirs.clear()  # Clear the list for the current directory level
-        for d in dirs:
-            full_path = os.path.join(root, d)
-            ## Exclude paths that start with "." or "__" or are in the _excludes list
-            if not (d.startswith('.') or d.startswith('__')) and not any(excluded == os.path.basename(full_path) for excluded in _excludes):
-                valid_dirs.append(d)  # Add to the list of valid directories
-        
-        ## Update the list of directories with those that are not excluded
-        dirs[:] = valid_dirs
 
-        ## Check if folder has a .py file but no __init__.py file
-        if any(file.endswith('.py') for file in files) and '__init__.py' not in files:
-            init_path = os.path.join(root, '__init__.py')
-            open(init_path, 'a').close()  # Create an empty __init__.py file
-            print(f'Created __init__.py in {root}')
-            created_init_in_dirs.append(root)  # Add the directory to the list where __init__.py was created
-
-    ## Save the paths of created __init__.py files, so we can reverse this later if needed
-    created_init_files_json = os.path.join(distribution_dir, 'created_init_files.json')
-    with open(created_init_files_json, 'w') as f:
-        json.dump(created_init_in_dirs, f)
+    directories_needing_init = find_py_directories(project_dir, _excludes)
+    create_init_files(directories_needing_init, distribution_dir)
 
 def remove_init_files(project_dir, distribution_dir):
     '''Created in case a user needs to reverse/remove anything that my 
@@ -109,14 +125,18 @@ def remove_fixes_and_optimizations(project_dir, distribution_dir):
 
 if __name__ == "__main__":
 
-    dir = r'C:\.PythonProjects\SavedTests\test_projects_for_building_packages\projects\A_with_nothing'
+    dir = r'C:\.PythonProjects\SavedTests\_test_projects_for_building_packages\projects\A_with_nothing'
     fix_and_optimize(
         project_dir=dir,
+        distribution_dir=dir,
         user_options={'excluded_folders': ['']})
     
     pt.c('\n - Successfully fixed and optimized your project!')
     
     input('Press enter to remove fixes and optimizations')
     
-    remove_fixes_and_optimizations(project_dir=dir)
+    remove_fixes_and_optimizations(
+        project_dir=dir,
+        distribution_dir=dir
+        )
 

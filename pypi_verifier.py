@@ -175,7 +175,7 @@ class PyPIVerifier:
             versions = data['releases'].keys()  # Get all versions
             pt(versions)
             latest_version = sorted(versions, key=lambda v: tuple(map(int, v.split('.'))), reverse=True)[0]
-        pt(latest_version)
+            pt(latest_version)
             self.pypi_version_number = latest_version
             
             # Now pass the latest version to check_if_version_lower_than_latest
