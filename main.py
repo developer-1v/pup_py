@@ -20,11 +20,55 @@
     
     TODO:
     - Integrate my conversion from setup.py to pyproject.toml
+    
+    - Allow the project_directory to be any url, not just a git repository or 
+    local directory. Note: I'd get rid of "git" and the cloning. 
+        - Possible approach 1:
+            import subprocess
+            url = "https://data.chc.ucsb.edu/products/EWX/data/forecasts/CHIRPS-GEFS_precip_v12/daily_16day/2016/01/02"
+            destination = "/path/to/download/directory"
+            subprocess.run(["wget", "-r", "--no-parent", "--reject", "index.html", "-P", destination, url], check=True)
+        
+        - Possible approach 2:
+            import os
+            import requests
+            from bs4 import BeautifulSoup
+            from urllib.parse import urljoin
+
+            def download_directory(url, download_path):
+                if not os.path.exists(download_path):
+                    os.makedirs(download_path)
+
+                response = requests.get(url)
+                soup = BeautifulSoup(response.text, 'html.parser')
+
+                for link in soup.find_all('a'):
+                    href = link.get('href')
+                    if href and not href.startswith('?'):
+                        download_url = urljoin(url, href)
+                        download_file_path = os.path.join(download_path, href)
+
+                        if href.endswith('/'):
+                            # Recursive call to handle subdirectories
+                            download_directory(download_url, download_file_path)
+                        else:
+                            # Download the file
+                            file_response = requests.get(download_url)
+                            with open(download_file_path, 'wb') as file:
+                                file.write(file_response.content)
+                            print(f"Downloaded {download_file_path}")
+
+            # Usage
+            download_directory('http://example.com/directory/', './downloaded_directory')
 
 
 '''
 
 import subprocess, os, sys, tempfile, shutil, re, requests
+import git
+import validators
+
+
 from build.__main__ import build_package
 
 from twine.commands.upload import upload as twine_upload
@@ -59,11 +103,18 @@ class PipUniversalProjects:
         use_gui=False,
         ):
         
+        if validators.url(project_directory):
+            project_directory = self._clone_repository(project_directory)
+            self.is_project_directory_a_url = True
         ## Check for Valid Project:
-        if not os.path.exists(project_directory):
+        elif not os.path.exists(project_directory):
             pt.c(' -- You must pass a legitimate project directory to try to process this!!!')
             pt.c(' -- Error: message for production:')
             raise FileNotFoundError(f'Project directory {project_directory} does not exist.')
+        else:
+            self.is_project_directory_a_url = False
+
+        self.project_directory = project_directory
         
         ## Args
         self.project_directory = project_directory
@@ -90,26 +141,19 @@ class PipUniversalProjects:
         ## Execute
         self._execute_full_workflow()
 
-    def _execute_full_workflow(self):
-        self.user_options()
-        self.create_directories()
-        self.check_or_gen_requirements()
-        self.setup_file_data()
-        self.verify_package_availability_status()
-        # pt.ex()
-        self.fix_and_optimize_package()
-        self.build_wheel()
-        self.uninstall_package()
-        self.install_package_locally()
-        self.test_installed_package() ## Test Local Wheel Package
-        # pt.ex()
-        self.uninstall_package()
-        self.upload_package_to_pypi()
-        self.install_package_from_pypi()
-        self.test_installed_package() ## Test Pypi intalled Package
-        
-        print(f'SUCCESS: Your package {self.package_name} has been created, tested, uploaded to PyPI, installed from Pypi, and tested again!')
-
+    def _clone_repository(self, url):
+        temp_dir = tempfile.mkdtemp()
+        print(f"Cloning {url} into {temp_dir}")
+        # Extract the repository name from the URL
+        repo_name = url.split('/')[-1]  # Get the last part of the URL
+        if repo_name.endswith('.git'):
+            repo_name = repo_name[:-4]  # Remove the '.git' extension if present
+        # Create a named directory within the temporary directory
+        named_dir = os.path.join(temp_dir, repo_name)
+        os.makedirs(named_dir, exist_ok=True)
+        git.Repo.clone_from(url, named_dir)
+        return named_dir
+    
     def user_options(self):
         
         self.user_options = {
@@ -368,7 +412,7 @@ class PipUniversalProjects:
         with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as temp:
             temp.write(
                 f'import {self.package_name}\n'
-                f'print("Test 3 Success: The package \'{self.package_name}\' is successfully being executed in a test script.")\n'.encode('utf-8')
+                f'print("Test 3 Success: The package \'{self.package_name}\' is successfully being executed in a temporary test script.")\n'.encode('utf-8')
             )
             temp_file_name = temp.name
         try:
@@ -446,50 +490,30 @@ class PipUniversalProjects:
                 pt()
                 raise e
 
-#     def upload_package_to_pypi(self):
-#         if self.use_test_pypi:
-#             repository_url = 'https://test.pypi.org/legacy/'
-#             token = os.getenv(self.test_pypi_token_env_var)
-#         else:
-#             repository_url = 'https://upload.pypi.org/legacy/'
-#             token = os.getenv(self.pypi_token_env_var)
-
-#         ## Check if the token is available
-#         if not token:
-#             error_message = f"""
-# Error: {'Test ' if self.use_test_pypi else ''}PyPI token not found. Please set the {'TEST_PYPI_TOKEN' if self.use_test_pypi else 'PYPI_TOKEN'} environment variable.
-
-# To obtain and set a PyPI token:
-# 1. Visit the PyPI token management page: https://pypi.org/help/#apitoken
-# 2. Follow the instructions to generate a new token.
-# 3. Set the token as an environment variable on your system:
-#     - Windows: https://docs.microsoft.com/en-us/windows/deployment/usmt/usmt-recognized-environment-variables
-#     - macOS/Linux: https://developer.apple.com/documentation/xcode/defining-environment-variables-for-mac-apps
-
-# For a visual guide on generating and setting PyPI tokens, watch this YouTube tutorial: https://youtu.be/WGsMydFFPMk?t=104 (Should start at 1:44 and last for 2 minutes to 3:45)
-#             """
-#             print(error_message)
-#             sys.exit(1)
-
-#         pt.c(f'Uploading Package to {"Test PyPI" if self.use_test_pypi else "PyPI"} using token authentication')
-
-#         ## Setup Twine settings with the token
-#         settings = Settings(
-#             repository_url=repository_url,
-#             username="__token__",
-#             password=token,
-#             non_interactive=True,
-#             verbose=True,
-#         )
-#         dists = [self.wheel_path]
-#         twine_upload(settings, dists)
-
     def install_package_from_pypi(self):
         pypi_type = 'Test PyPI' if self.use_test_pypi else 'PyPI'
         pt.c(f'Installing Package from {pypi_type}')
         index_url = 'https://test.pypi.org/simple/' if self.use_test_pypi else 'https://pypi.org/simple'
         subprocess.run([sys.executable, '-m', 'pip', 'install', '--index-url', index_url, self.package_name], check=True)
 
+    def _execute_full_workflow(self):
+        self.user_options()
+        self.create_directories()
+        self.check_or_gen_requirements()
+        self.setup_file_data()
+        self.verify_package_availability_status()
+        self.fix_and_optimize_package()
+        self.build_wheel()
+        self.uninstall_package()
+        self.install_package_locally()
+        self.test_installed_package() ## Test Local Wheel Package
+        pt.ex()
+        self.uninstall_package()
+        self.upload_package_to_pypi()
+        self.install_package_from_pypi()
+        self.test_installed_package() ## Test Pypi intalled Package
+        
+        print(f'SUCCESS: Your package {self.package_name} has been created, tested, uploaded to PyPI, installed from Pypi, and tested again!')
 
 
 # def main(project_directory, destination_directory=None):
@@ -508,28 +532,28 @@ def test():
     
     ## Clean out old projects and create new ones
     subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
-    # pt.ex()
     
     ## Dynamically get names of all test projects that start with a capital letter and underscore:
     project_dirs = [name for name in os.listdir(main_projects_path)
                     if os.path.isdir(os.path.join(main_projects_path, name)) and re.match(r'[A-Z]_', name)]
-
-    ## TODO DELETE: temporary testing of individual projects
-    project_dirs = ['A_with_nothing',
-                    # 'B_with_pyproject_toml',
-                    # 'C_with_setup_py',
-                    # 'D_with_requirements',
-                    # 'E_with_existing_init_files',
-                    ]
-
-    for project_dir in project_dirs:    
+    
+    github_url = 'https://github.com/developer-1v/SavedGithubTestProject.git'
+    project_dirs.append(github_url)
+    
+    start_index = -1
+    # end_index = -1
+    end_index = None
+    selected_projects = project_dirs[start_index:end_index]
+    pt(project_dirs, selected_projects)
+    
+    for project_dir in selected_projects:    
         PipUniversalProjects(
-            project_directory=os.path.join(main_projects_path, project_dir),
+            project_directory=project_dir,
             automatically_increment_version=True,
             use_standard_build_directories=True,
             use_test_pypi=True,
             # test_pypi_token_env_var='NON-EXISTANT_PYPI_TOKEN_FOR_TESTING',
-            )
+        )
 
 if __name__ == '__main__':
     test()
