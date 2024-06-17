@@ -107,6 +107,8 @@ class PipUniversalProjects:
         self.upload_package_to_pypi()
         self.install_package_from_pypi()
         self.test_installed_package() ## Test Pypi intalled Package
+        
+        print(f'SUCCESS: Your package {self.package_name} has been created, tested, uploaded to PyPI, installed from Pypi, and tested again!')
 
     def user_options(self):
         
@@ -204,6 +206,7 @@ class PipUniversalProjects:
         pt(self.pyproject_data)
         
         self.username = self.pyproject_data['username']
+        self.email = self.pyproject_data['email']
         # pt(self.username)
         self.package_name = self.pyproject_data['package_name']
         self.version_number = self.pyproject_data['version']
@@ -212,8 +215,24 @@ class PipUniversalProjects:
         # pt.ex()
 
     def verify_package_availability_status(self):
-        self.verifier = PyPIVerifier(self.package_name, self.username, self.version_number, self.use_test_pypi)
+        self.verifier = PyPIVerifier(
+            self.package_name, 
+            self.username,
+            self.email,
+            self.version_number, 
+            self.use_test_pypi, 
+            self.use_gui, 
+            self.automatically_increment_version
+        )
         self.package_name, self.username, self.version_number = self.verifier.handle_verification()
+        pt(self.package_name, self.username, self.version_number)
+        
+        # Update the pyproject.toml file with the verified or modified values
+        self.setup_file_manager.modify_package_name(self.package_name)
+        self.setup_file_manager.modify_owner(self.username, self.email)
+        self.setup_file_manager.modify_version(self.version_number)
+        
+        
         # pt(self.username)
 
     def fix_and_optimize_package(self):

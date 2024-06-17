@@ -4,7 +4,8 @@ from print_tricks import pt
 class PyPIVerifier:
     def __init__(self, 
             package_name, 
-            username, 
+            username,
+            email,
             version, 
             use_test_pypi=False, 
             use_gui=False,
@@ -13,6 +14,7 @@ class PyPIVerifier:
         self.package_name = package_name
         self.version_number = version
         self.username = username
+        self.email = email
         # pt(self.username)
         self.automatically_increment_version = automatically_increment_version
         base_url = "https://test.pypi.org/pypi" if use_test_pypi else "https://pypi.org/pypi"
@@ -51,9 +53,7 @@ class PyPIVerifier:
             return user_input
 
     def handle_verification(self, attempt=0):
-        max_attempts = 5  # Maximum number of attempts before stopping recursion
-        if pt.after(3):
-            pt.ex()
+        max_attempts = 15  # Maximum number of attempts before stopping recursion
         if attempt >= max_attempts:
             print("Maximum attempts reached. Exiting verification process.")
             return None  # Or handle this case as needed
@@ -72,6 +72,9 @@ class PyPIVerifier:
                 new_username = self.prompt_for_input("Enter a new username:")
                 if new_username:
                     self.username = new_username
+                    new_email = self.prompt_for_input(f"Enter a new email (current: {self.email}):", default=self.email)
+                    if new_email:
+                        self.email = new_email
                     return self.handle_verification(attempt + 1)
                 
         if not is_version_available:
@@ -116,12 +119,11 @@ class PyPIVerifier:
             owner_info = f"The owner is '{self.pypi_owners[0]}'" if self.pypi_owners else "No owner information available"
             message = f"The package name '{self.package_name}' is taken and you, '{self.username}', are not the owner. {owner_info}. Please choose a different package name here: (or exit this, and change it in your setup/pyproject file)"
 
-        
         return is_new_package, is_our_package, is_version_available, message
 
     def verify_new_package(self):
         response = requests.get(self.api_url)
-
+        
         if response.status_code == 200:
             return False  # Package name is already taken
         elif response.status_code == 404:
@@ -143,30 +145,6 @@ class PyPIVerifier:
             return self.username in author
         return False
 
-    def check_if_version_lower_than_latest(self, latest_version):
-        if latest_version is None:
-            return  # No latest version found, possibly due to an error or new package
-
-        current_version_tuple = tuple(map(int, self.version_number.split('.')))
-        latest_version_tuple = tuple(map(int, latest_version.split('.')))
-
-        if current_version_tuple < latest_version_tuple:
-            print(f"Your version ({self.version_number}) is lower than the latest version on PyPI ({latest_version}).")
-            
-            if self.automatically_increment_version:
-                self.version_number = self.auto_increment_version()
-                return True  # Indicate that the version was incremented
-            else:
-                choice = self.prompt_for_input("Do you want to proceed with the lower version? Type 'yes' to proceed or enter a new version number:", input_type='text')
-                if choice.lower() != 'yes':
-                    self.version_number = choice  # Update the version number with user input
-                    return True  # Indicate that the version was updated
-                else:
-                    return False  # No update to version, may need to handle differently
-        else:
-            print("Your version is up-to-date or higher than the version on PyPI.")
-            return True  # No need for further action
-    
     def verify_version_available(self):
         response = requests.get(self.api_url)
         
@@ -178,18 +156,45 @@ class PyPIVerifier:
             pt(latest_version)
             self.pypi_version_number = latest_version
             
-            # Now pass the latest version to check_if_version_lower_than_latest
-            self.check_if_version_lower_than_latest(latest_version)  # Check if the current version is lower and handle accordingly
-            # Check if the current version is already taken
+            self.check_if_version_lower_than_latest(latest_version)
+
             is_version_available = self.version_number not in versions
             
             return is_version_available, self.pypi_version_number
         return False, None
+    
+    def check_if_version_lower_than_latest(self, latest_version):
+        if latest_version is None:
+            return  # No latest version found, possibly due to an error or new package
 
-    def auto_increment_version(self):
-        self.verify_version_available() ## updates the self.pypi_version_number
+        current_version_tuple = tuple(map(int, self.version_number.split('.')))
+        latest_version_tuple = tuple(map(int, latest_version.split('.')))
+
+        if current_version_tuple < latest_version_tuple:
+            print(f"Your version ({self.version_number}) is lower than the latest version on PyPI ({latest_version}).")
+            
+            if self.automatically_increment_version:
+                # if pt.after(4):
+                #     pt.ex()
+                self.version_number = self.auto_increment_version(latest_version)
+                return True  # Indicate that the version was incremented
+
+            else:
+                choice = self.prompt_for_input("Do you want to proceed with the lower version? Type 'yes' to proceed or enter a new version number:", input_type='text')
+                if choice.lower() != 'yes':
+                    self.version_number = choice  # Update the version number with user input
+                    return True  # Indicate that the version was updated
+                else:
+                    return False  # No update to version, may need to handle differently
+        else:
+            print("Your version is up-to-date or higher than the version on PyPI.")
+            return True  # No need for further action
+
+
+    def auto_increment_version(self, latest_version):
+        # self.verify_version_available() ## updates the self.pypi_version_number
         ## Split the version number
-        parts = self.pypi_version_number.split('.')
+        parts = latest_version.split('.')
         ## Convert the last part to an integer and increment it
         parts[-1] = str(int(parts[-1]) + 1)
         # Join the parts back into a singular version number
@@ -199,10 +204,13 @@ class PyPIVerifier:
 
 if __name__ == "__main__":
     verifier = PyPIVerifier(
-        "A_with_nothing", 
-        "developer-1v",
-        "0.1.0",
-        use_test_pypi=True
+        package_name="A_with_nothing", 
+        username="developer-1v",
+        email="developer-1v@gmail.com",
+        version="0.1.0",
+        use_test_pypi=True,
+        use_gui=False,
+        automatically_increment_version=True,
         )
     updated_package_name, updated_username, updated_version = verifier.handle_verification()
     pt(updated_package_name, updated_username, updated_version)

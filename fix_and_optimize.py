@@ -118,7 +118,7 @@ def remove_init_files(project_dir, distribution_dir):
         json.dump(created_init_files, f)
 
 def fix_and_optimize(project_dir, distribution_dir, user_options):
-    create_init_files(project_dir, distribution_dir, user_options)
+    create_init_files_main(project_dir, distribution_dir, user_options)
 
 def remove_fixes_and_optimizations(project_dir, distribution_dir):
     remove_init_files(project_dir, distribution_dir)

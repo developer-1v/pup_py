@@ -9,7 +9,7 @@ class SetupFileManager:
             package_name,
             version='0.1.0',
             username='developer-1v',
-            user_email='developer-1v@gmail.com',
+            email='developer-1v@gmail.com',
             packages='["."]',
         ):
         self.project_directory = project_directory
@@ -17,7 +17,7 @@ class SetupFileManager:
         self.package_name = package_name
         self.version = version
         self.username = username
-        self.user_email = user_email
+        self.email = email
         self.packages = packages
 
     def get_setup_file_data(self):
@@ -76,7 +76,8 @@ class SetupFileManager:
         package_name = self.extract_value(content, r'name\s*=\s*')
         version = self.extract_value(content, r'version\s*=\s*')
         username = self.extract_value(content, r'authors\s*=\s*\[\s*\{.*?name\s*:\s*"')
-        user_email = self.extract_value(content, r'authors\s*=\s*\[\s*\{.*?email\s*:\s*"')
+        # email = self.extract_value(content, r'authors\s*=\s*\[\s*\{.*?email\s*:\s*"')
+        email = self.extract_value(content, r'authors\s*=\s*\[\s*\{[^}]*?email\s*:\s*"([^"]+)"')
         packages = self.extract_value(content, r'packages\s*=\s*\[')
 
         if package_name == '' or version == '':
@@ -85,7 +86,7 @@ class SetupFileManager:
             'package_name': package_name, 
             'version': version,
             'username': username,
-            'user_email': user_email,
+            'email': email,
             'packages': packages,
             'pyproject_file_path': file_path
         }
@@ -103,14 +104,14 @@ class SetupFileManager:
     def update_toml_file_with_all_modifications(self):
         self.modify_package_name(self.package_name)
         self.modify_version(self.version)
-        self.modify_owner(self.username, self.user_email)
+        self.modify_owner(self.username, self.email)
         self.modify_packages(self.packages)
         
         return {
             'package_name': self.package_name, 
             'version': self.version,
             'username': self.username,
-            'user_email': self.user_email,
+            'email': self.email,
             'packages': self.packages,
             'pyproject_file_path': self.new_toml_path
         }
