@@ -58,7 +58,7 @@ class PyPIVerifier:
             print("Maximum attempts reached. Exiting verification process.")
             return None  # Or handle this case as needed
 
-        is_new_package, is_our_package, is_version_available, message = self.check_package_status()
+        is_new_package, is_our_package, is_version_available, latest_version, message = self.check_package_status()
         print(message)
         
         if not is_our_package:
@@ -79,7 +79,7 @@ class PyPIVerifier:
                 
         if not is_version_available:
             if self.automatically_increment_version:
-                self.version_number = self.auto_increment_version()
+                self.version_number = self.auto_increment_version(latest_version)
             else:
                 self.version_number = self.prompt_for_input("Enter a new version number:")
             
@@ -119,7 +119,7 @@ class PyPIVerifier:
             owner_info = f"The owner is '{self.pypi_owners[0]}'" if self.pypi_owners else "No owner information available"
             message = f"The package name '{self.package_name}' is taken and you, '{self.username}', are not the owner. {owner_info}. Please choose a different package name here: (or exit this, and change it in your setup/pyproject file)"
 
-        return is_new_package, is_our_package, is_version_available, message
+        return is_new_package, is_our_package, is_version_available, self.pypi_version_number, message
 
     def verify_new_package(self):
         response = requests.get(self.api_url)

@@ -14,12 +14,15 @@ class SetupFileManager:
         ):
         self.project_directory = project_directory
         self.distribution_directory = distribution_directory
+        self.distribution_folder_name = os.path.basename(distribution_directory.rstrip("\\/"))
         self.package_name = package_name
         self.version = version
         self.author = author
         self.author_email = author_email
         self.packages = packages
-        
+        pt(self.project_directory, self.distribution_directory, self.package_name, self.distribution_folder_name, self.version, self.author, self.author_email, self.packages)
+        # pt.ex()
+
     def get_setup_file_data(self):
         # Define paths to potential configuration files
         paths = {
@@ -27,17 +30,19 @@ class SetupFileManager:
             'setup.py': [os.path.join(self.project_directory, 'setup.py'), os.path.join(self.distribution_directory, 'setup.py')],
             'main.py': [os.path.join(self.project_directory, 'main.py')]
         }
-
+        
         # Ensure the build_dist directory exists before attempting to copy files
         os.makedirs(self.distribution_directory, exist_ok=True)
-
+        
         # Check for files in the defined paths and parse accordingly
         for file_type, file_paths in paths.items():
             for path in file_paths:
                 if os.path.exists(path):
                     self.new_toml_path = path
                     if file_type == 'pyproject.toml':
+                        
                         data = self.parse_pyproject_file(path)
+                        self.modify_packages(self.distribution_folder_name)
                     elif file_type == 'setup.py':
                         data = self.parse_setup_file(path)
                     elif file_type == 'main.py':
@@ -225,6 +230,7 @@ class SetupFileManager:
             self.template_content = file.read()
 
     def modify_package_name(self, new_package_name):
+        pt(new_package_name)
         self.read_template()
         self.template_content = re.sub(
             r'name\s*=\s*"[^"]+"', f'name = "{new_package_name}"', self.template_content)
@@ -246,13 +252,18 @@ class SetupFileManager:
         base_path = '/'.join(path_parts[:-1])  # Everything except the last part
         target_directory = path_parts[-1]  # The last part of the path
 
+        # pt(self.distribution_folder_name)
+        
         self.read_template()
         self.template_content = re.sub(
             r'packages\s*=\s*\{\s*find\s*=\s*\{\s*where\s*=\s*\["[^"]*"\],\s*include\s*=\s*\["[^"]*"\]\s*\}\s*\}',
             # f'packages = {{find = {{where = [".."], include = ["{target_directory}/*"]}}}}',
-            f'packages = {{find = {{where = [".."], include = ["{self.package_name}*"]}}}}',
+            f'packages = {{find = {{where = [".."], include = ["{self.distribution_folder_name}*"]}}}}',
             self.template_content)
         self.save_changes()
+        
+        # pt(self.distribution_folder_name)
+        # pt.ex()
 
 
 

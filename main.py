@@ -544,8 +544,8 @@ def test():
     github_url = 'https://github.com/developer-1v/SavedGithubTestProject.git'
     project_dirs.append(github_url)
     
-    start_index = 1
-    end_index = 2
+    start_index = 0
+    end_index = 1
     # start_index = -1
     # end_index = None  ## Start of 1 with None as end: will pick the last item only
     selected_projects = project_dirs[start_index:end_index]
