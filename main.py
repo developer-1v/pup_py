@@ -501,6 +501,7 @@ class PipUniversalProjects:
         self.create_directories()
         self.check_or_gen_requirements()
         self.setup_file_data()
+        pt.ex()
         self.verify_package_availability_status()
         self.fix_and_optimize_package()
         self.build_wheel()
@@ -534,15 +535,19 @@ def test():
     subprocess.run([sys.executable, clean_and_create_new_projects_path], check=True)
     
     ## Dynamically get names of all test projects that start with a capital letter and underscore:
-    project_dirs = [name for name in os.listdir(main_projects_path)
-                    if os.path.isdir(os.path.join(main_projects_path, name)) and re.match(r'[A-Z]_', name)]
+    project_dirs = [
+        name for name in os.listdir(main_projects_path)
+        if os.path.isdir(os.path.join(main_projects_path, name)) 
+        and re.match(r'[A-Z]_', name)]
+    project_dirs = [os.path.join(main_projects_path, project_dir) for project_dir in project_dirs]
     
     github_url = 'https://github.com/developer-1v/SavedGithubTestProject.git'
     project_dirs.append(github_url)
     
-    start_index = -1
-    # end_index = -1
-    end_index = None
+    start_index = 1
+    end_index = 2
+    # start_index = -1
+    # end_index = None  ## Start of 1 with None as end: will pick the last item only
     selected_projects = project_dirs[start_index:end_index]
     pt(project_dirs, selected_projects)
     

@@ -47,16 +47,3 @@ testing = ["pytest>=3"]
 zip-safe = false
 include-package-data = true
 packages = { find = { where = [".."], include = ["."] } }
-
-
-
-
-
-
-# packages = ['A_with_nothing']
-# packages = { find = { where = ["."] } }
-# packages = { find = { where = ["../A_with_nothing"] } }
-# packages = ["C:/.PythonProjects/SavedTests/_test_projects_for_building_packages/projects/A_with_nothing"]
-# packages = { find = { where = ["C:/.PythonProjects/SavedTests/_test_projects_for_building_packages/projects/A_with_nothing/"], include = ["*"] } }
-# packages = { find = { where = ["C:\\.PythonProjects\\SavedTests\\_test_projects_for_building_packages\\projects"], include = ["A_with_nothing"] } }
-# packages = { find = { where = ["."], include = ["*"] } }
