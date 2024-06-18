@@ -40,9 +40,8 @@ class SetupFileManager:
                 if os.path.exists(path):
                     self.new_toml_path = path
                     if file_type == 'pyproject.toml':
-                        
                         data = self.parse_pyproject_file(path)
-                        self.modify_packages(self.distribution_folder_name)
+                        self.modify_packages()
                     elif file_type == 'setup.py':
                         data = self.parse_setup_file(path)
                     elif file_type == 'main.py':
@@ -202,7 +201,7 @@ class SetupFileManager:
         self.modify_package_name(self.package_name)
         self.modify_version(self.version)
         self.modify_owner(self.author, self.author_email)
-        self.modify_packages(self.packages)
+        self.modify_packages()
         
         return {
             'package_name': self.package_name, 
@@ -242,18 +241,18 @@ class SetupFileManager:
             r'version\s*=\s*"[^"]+"', f'version = "{new_version}"', self.template_content)
         self.save_changes()
 
-    def modify_packages(self, new_packages):
+    def modify_packages(self):
         # Get the parent directory of the current distribution directory
-        parent_directory = os.path.dirname(self.distribution_directory)
-        escaped_parent_directory = parent_directory.replace("\\", "/")  # Use forward slashes for paths
+        # parent_directory = os.path.dirname(self.distribution_directory)
+        # escaped_parent_directory = parent_directory.replace("\\", "/")  # Use forward slashes for paths
 
-        # Split the escaped parent directory to separate the base path and the target directory
-        path_parts = escaped_parent_directory.split('/')
-        base_path = '/'.join(path_parts[:-1])  # Everything except the last part
-        target_directory = path_parts[-1]  # The last part of the path
+        # # Split the escaped parent directory to separate the base path and the target directory
+        # path_parts = escaped_parent_directory.split('/')
+        # base_path = '/'.join(path_parts[:-1])  # Everything except the last part
+        # target_directory = path_parts[-1]  # The last part of the path
 
-        # pt(self.distribution_folder_name)
-        
+        # # pt(self.distribution_folder_name)
+        pt(self.distribution_folder_name)
         self.read_template()
         self.template_content = re.sub(
             r'packages\s*=\s*\{\s*find\s*=\s*\{\s*where\s*=\s*\["[^"]*"\],\s*include\s*=\s*\["[^"]*"\]\s*\}\s*\}',
@@ -261,6 +260,7 @@ class SetupFileManager:
             f'packages = {{find = {{where = [".."], include = ["{self.distribution_folder_name}*"]}}}}',
             self.template_content)
         self.save_changes()
+        self.packages = self.distribution_folder_name
         
         # pt(self.distribution_folder_name)
         # pt.ex()

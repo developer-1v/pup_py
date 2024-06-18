@@ -328,12 +328,13 @@ class PipUniversalProjects:
             os.chdir(original_cwd)
 
     def build_wheel(self):
-        ## Debug Log the contents of the project directory
+        # Debug Log the contents of the project directory
         # print("Contents of the project directory:")
         # for root, dirs, files in os.walk(self.project_directory):
         #     for file in files:
         #         print(os.path.join(root, file))
         
+        # pt.ex()
         original_cwd = os.getcwd()
         
         try:
@@ -348,6 +349,8 @@ class PipUniversalProjects:
                 shutil.rmtree(build_dir)
                 print(f"Cleared old build directory at {build_dir}.")
                 
+            # pt(self.pypi_distribution_directory)
+            # pt.ex()
             # Building the wheel
             try:
                 # Using the build module to build the package
@@ -371,7 +374,8 @@ class PipUniversalProjects:
                 raise FileNotFoundError(f"No wheel file created for version {self.version_number}.")
         finally:
             os.chdir(original_cwd)
-
+        pt(self.wheel_path)
+        # pt.ex()
     def uninstall_package(self):
         subprocess.run([sys.executable, '-m', 'pip', 'uninstall', self.package_name, '-y'], check=True)
 
@@ -406,6 +410,7 @@ class PipUniversalProjects:
             print(f"Test 2 Success: The package '{self.package_name}' was successfully imported.")
         except ImportError as e:
             print(f"Test 2 Failure: Could not import the package '{self.package_name}'. Error: {e}")
+            print(f"   Are you sure that your package location is actually located at '{self.distribution_directory}' ?")
             sys.exit(1)
         
         ## Test 3: Execute elsewhere to ensure the package's avaiability
@@ -544,8 +549,10 @@ def test():
     github_url = 'https://github.com/developer-1v/SavedGithubTestProject.git'
     project_dirs.append(github_url)
     
-    start_index = 0
-    end_index = 1
+    # start_index = 0
+    # end_index = 1
+    start_index = 1
+    end_index = 2
     # start_index = -1
     # end_index = None  ## Start of 1 with None as end: will pick the last item only
     selected_projects = project_dirs[start_index:end_index]
