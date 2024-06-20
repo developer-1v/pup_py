@@ -1,5 +1,5 @@
 from print_tricks import pt
-import os, re, shutil
+import os, re, shutil, glob
 import toml
 
 class SetupFileManager:
@@ -67,10 +67,63 @@ class SetupFileManager:
         
         return self.update_toml_file_with_all_modifications()
 
+    def _check_for_valid_packages(self, packages_line):
+        pt(packages_line)
+        
+        if not isinstance(packages_line, dict) or 'packages' not in packages_line:
+            raise Exception ("Invalid or missing 'packages' configuration.")
+        
+        if isinstance(packages_line, dict) and 'packages' in packages_line:
+            packages_data = packages_line['packages']
+            if 'find' in packages_data:
+                find_config = packages_data['find']
+                if 'where' in find_config and 'include' in find_config:
+                    where = find_config['where']
+                    include = find_config['include']
+                    pt(where, include)
+                    
+                    # Generate a list of package directories based on 'where' and 'include'
+                    package_dirs = []
+                    for base_dir in where:
+                        for inc in include:
+                            # Adjust the search path based on whether the include pattern ends with a wildcard
+                            if inc.endswith('*'):
+                                search_path = os.path.join(self.project_directory, base_dir, inc)
+                            else:
+                                search_path = os.path.join(self.project_directory, base_dir, inc, '*')
+                            
+                            found_dirs = glob.glob(search_path)
+                            if found_dirs:
+                                package_dirs.extend(found_dirs)
+                            else:
+                                print(f"No package directories matching {search_path}. Stopping build process.")
+                                exit(1)
+                                
+                    # Check each found directory
+                    for package_dir in package_dirs:
+                        if not os.path.exists(package_dir):
+                            print(f"No package directory found at {package_dir}. Stopping build process.")
+                            exit(1)
+
+    def _check_for_valid_setup_data(self, common_data):
+        pt(common_data['packages_line'], common_data['packages'])
+        
+        # # Check if essential fields are present and valid
+        # required_fields = ['package_name', 'version', 'author', 'author_email', 'packages']
+        # missing_fields = [field for field in required_fields if not common_data.get(field)]
+        # if missing_fields:
+        #     print(f"Missing required setup data fields: {', '.join(missing_fields)}")
+        #     exit(1)
+
+        ## Check the validity of the packages
+        self._check_for_valid_packages(common_data['packages_line'])
+
     def parse_pyproject_file(self, file_path):
         try:
             with open(file_path, 'r') as file:
-                pyproject_data = toml.load(file)
+                lines = file.readlines()
+
+            pyproject_data = toml.loads(''.join(lines))
 
             # Common data extraction
             common_data = {}
@@ -100,6 +153,11 @@ class SetupFileManager:
             common_data['dependencies'] = tool_data.get('dependencies', {})
             common_data['dev_dependencies'] = tool_data.get('dev-dependencies', {}) if 'dev-dependencies' in tool_data else tool_data.get('setup_requires', [])
             common_data['packages'] = tool_data.get('packages', [])
+
+            # Extract the entire line containing 'packages' from the file
+            packages_line = next((line.strip() for line in lines if 'packages' in line), None)
+            common_data['packages_line'] = toml.loads(packages_line)
+        
             
             common_data['pyproject_file_path'] = file_path
 
@@ -117,6 +175,8 @@ class SetupFileManager:
                 common_data['author'] = None
                 common_data['author_email'] = None
 
+            self._check_for_valid_setup_data(common_data)
+            
             return common_data
 
         except Exception as e:
@@ -280,7 +340,9 @@ if __name__ == '__main__':
     ## TODO DELETE: temporary testing of individual projects
     project_directories = [
         # 'A_with_nothing',
-        'B_with_pyproject_toml_good',
+        # 'B_with_pyproject_toml_good',
+        'C_with_pyproject_diff_package_name_than_name',
+        
     ]
     
     

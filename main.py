@@ -430,7 +430,7 @@ class PipUniversalProjects:
             os.remove(temp_file_name)
         
         print(f'All Tests Passed. Package "{self.package_name}" has been successfully installed.')
-        print(f"'{self.package_name}'Details:\n{result_test_1.stdout}")
+        print(f"'{self.package_name}'  Details:\n{result_test_1.stdout}")
 
     def upload_package_to_pypi(self):
         if self.use_test_pypi:
