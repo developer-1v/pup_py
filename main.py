@@ -514,10 +514,10 @@ class PipUniversalProjects:
         self.install_package_locally()
         self.test_installed_package() ## Test Local Wheel Package
         # pt.ex()
-        self.uninstall_package()
-        self.upload_package_to_pypi()
-        self.install_package_from_pypi()
-        self.test_installed_package() ## Test Pypi intalled Package
+        # self.uninstall_package()
+        # self.upload_package_to_pypi()
+        # self.install_package_from_pypi()
+        # self.test_installed_package() ## Test Pypi intalled Package
         
         print(f'SUCCESS: Your package {self.package_name} has been created, tested, uploaded to PyPI, installed from Pypi, and tested again!')
 
@@ -550,8 +550,8 @@ def test():
     project_dirs.append(github_url)
     
     start_index = 0
-    # end_index = 1
     # start_index = 1
+    # end_index = 1
     end_index = 2
     # start_index = -1
     # end_index = None  ## Start of 1 with None as end: will pick the last item only

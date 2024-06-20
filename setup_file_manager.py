@@ -71,7 +71,7 @@ class SetupFileManager:
         pt(packages_line)
         
         if not isinstance(packages_line, dict) or 'packages' not in packages_line:
-            raise Exception ("Invalid or missing 'packages' configuration.")
+            raise Exception("Invalid or missing 'packages' configuration.")
         
         if isinstance(packages_line, dict) and 'packages' in packages_line:
             packages_data = packages_line['packages']
@@ -85,16 +85,20 @@ class SetupFileManager:
                     # Generate a list of package directories based on 'where' and 'include'
                     package_dirs = []
                     for base_dir in where:
+                        adjusted_base_dir = os.path.normpath(os.path.join(self.project_directory, base_dir))
+                        
                         for inc in include:
                             # Adjust the search path based on whether the include pattern ends with a wildcard
                             if inc.endswith('*'):
-                                search_path = os.path.join(self.project_directory, base_dir, inc)
+                                search_path = os.path.join(adjusted_base_dir, inc)
                             else:
-                                search_path = os.path.join(self.project_directory, base_dir, inc, '*')
+                                search_path = os.path.join(adjusted_base_dir, inc, '*')
                             
-                            found_dirs = glob.glob(search_path)
+                            # Use glob.glob with recursive=True to search subdirectories
+                            found_dirs = glob.glob(search_path, recursive=True)
                             if found_dirs:
                                 package_dirs.extend(found_dirs)
+                                print(f"Package directories found matching {search_path}: {found_dirs}")
                             else:
                                 print(f"No package directories matching {search_path}. Stopping build process.")
                                 exit(1)
@@ -340,8 +344,8 @@ if __name__ == '__main__':
     ## TODO DELETE: temporary testing of individual projects
     project_directories = [
         # 'A_with_nothing',
-        # 'B_with_pyproject_toml_good',
-        'C_with_pyproject_diff_package_name_than_name',
+        'B_with_pyproject_toml_good',
+        # 'C_with_pyproject_diff_package_name_than_name',
         
     ]
     
