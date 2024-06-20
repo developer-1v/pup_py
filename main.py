@@ -513,7 +513,7 @@ class PipUniversalProjects:
         self.uninstall_package()
         self.install_package_locally()
         self.test_installed_package() ## Test Local Wheel Package
-        pt.ex()
+        # pt.ex()
         self.uninstall_package()
         self.upload_package_to_pypi()
         self.install_package_from_pypi()
@@ -549,9 +549,9 @@ def test():
     github_url = 'https://github.com/developer-1v/SavedGithubTestProject.git'
     project_dirs.append(github_url)
     
-    # start_index = 0
+    start_index = 0
     # end_index = 1
-    start_index = 1
+    # start_index = 1
     end_index = 2
     # start_index = -1
     # end_index = None  ## Start of 1 with None as end: will pick the last item only

@@ -1,0 +1,6 @@
+Metadata-Version: 2.1
+Name: test_pyproject_b
+Version: 0.1.0
+Summary: Creates a package from a source and then automatically tests the package, uploads to PyPI, and installs to your PC
+License: MIT License
+Requires-Python: >=3.6

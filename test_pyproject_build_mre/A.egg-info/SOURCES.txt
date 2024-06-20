@@ -1,0 +1,8 @@
+pyproject.toml
+A.egg-info/PKG-INFO
+A.egg-info/SOURCES.txt
+A.egg-info/dependency_links.txt
+A.egg-info/not-zip-safe
+A.egg-info/top_level.txt
+src/__init__.py
+src/test_file_in_src.py

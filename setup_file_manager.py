@@ -41,7 +41,7 @@ class SetupFileManager:
                     self.new_toml_path = path
                     if file_type == 'pyproject.toml':
                         data = self.parse_pyproject_file(path)
-                        self.modify_packages()
+                        # self.modify_packages()
                     elif file_type == 'setup.py':
                         data = self.parse_setup_file(path)
                     elif file_type == 'main.py':
