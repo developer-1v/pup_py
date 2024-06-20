@@ -550,9 +550,10 @@ def test():
     project_dirs.append(github_url)
     
     start_index = 0
-    # start_index = 1
+    start_index = 1
+    start_index = 2
     # end_index = 1
-    end_index = 2
+    end_index = 3
     # start_index = -1
     # end_index = None  ## Start of 1 with None as end: will pick the last item only
     selected_projects = project_dirs[start_index:end_index]

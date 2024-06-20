@@ -22,13 +22,13 @@ class SetupFileManager:
         self.packages = packages
         pt(self.project_directory, self.distribution_directory, self.package_name, self.distribution_folder_name, self.version, self.author, self.author_email, self.packages)
         # pt.ex()
-
+        
     def get_setup_file_data(self):
         # Define paths to potential configuration files
         paths = {
-            'pyproject.toml': [os.path.join(self.project_directory, 'pyproject.toml'), os.path.join(self.distribution_directory, 'pyproject.toml')],
-            'setup.py': [os.path.join(self.project_directory, 'setup.py'), os.path.join(self.distribution_directory, 'setup.py')],
-            'main.py': [os.path.join(self.project_directory, 'main.py')]
+            'pyproject.toml': [os.path.join(self.project_directory, '**', 'pyproject.toml'), os.path.join(self.distribution_directory, '**', 'pyproject.toml')],
+            'setup.py': [os.path.join(self.project_directory, '**', 'setup.py'), os.path.join(self.distribution_directory, '**', 'setup.py')],
+            'main.py': [os.path.join(self.project_directory, '**', 'main.py')]
         }
         
         # Ensure the build_dist directory exists before attempting to copy files
@@ -36,24 +36,26 @@ class SetupFileManager:
         
         # Check for files in the defined paths and parse accordingly
         for file_type, file_paths in paths.items():
-            for path in file_paths:
-                if os.path.exists(path):
-                    self.new_toml_path = path
-                    if file_type == 'pyproject.toml':
-                        data = self.parse_pyproject_file(path)
-                        # self.modify_packages()
-                    elif file_type == 'setup.py':
-                        data = self.parse_setup_file(path)
-                    elif file_type == 'main.py':
-                        data = self.parse_main_file(path)
-                        self.create_pyproject_from_template(data)
-                    print(f"{file_type} found and parsed in {'project directory' if 'project_directory' in path else 'build distribution directory'}.")
-                    return data
-
+            for pattern in file_paths:
+                for path in glob.glob(pattern, recursive=True):
+                    if os.path.exists(path):
+                        self.new_toml_path = path
+                        if file_type == 'pyproject.toml':
+                            pt(path)
+                            data = self.parse_pyproject_file(path)
+                        elif file_type == 'setup.py':
+                            data = self.parse_setup_file(path)
+                        elif file_type == 'main.py':
+                            data = self.parse_main_file(path)
+                            self.create_pyproject_from_template(data)
+                        print(f"{file_type} found and parsed in {'project directory' if 'project_directory' in path else 'build distribution directory'}.")
+                        pt.ex()
+                        return data
+                    
         # If no relevant files are found, create a new pyproject.toml from a template without specific data
         print("No configuration files found. Creating new pyproject.toml from template.")
         return self.create_pyproject_from_template()
-
+    
     def create_pyproject_from_template(self):
         # pt.ex()
         this_dir = os.path.dirname(__file__)
@@ -66,7 +68,7 @@ class SetupFileManager:
         shutil.copy(template_path, self.new_toml_path)
         
         return self.update_toml_file_with_all_modifications()
-
+    
     def _check_for_valid_packages(self, packages_line):
         pt(packages_line)
         
@@ -344,8 +346,8 @@ if __name__ == '__main__':
     ## TODO DELETE: temporary testing of individual projects
     project_directories = [
         # 'A_with_nothing',
-        'B_with_pyproject_toml_good',
-        # 'C_with_pyproject_diff_package_name_than_name',
+        # 'B_with_pyproject_toml_good',
+        'C_with_pyproject_diff_package_name_than_name',
         
     ]
     
